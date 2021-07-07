@@ -1,8 +1,8 @@
 # Solving differential equations in parallel on GPUs
 
-**[JuliaCon 2021 workshop | Fri, July 23, 10am-1pm ET (16:00-19:00 CEST)](https://pretalx.com/juliacon2021/featured/)**
-
 [![Build Status](https://github.com/luraess/parallel-gpu-workshop-JuliaCon21/workflows/CI/badge.svg)](https://github.com/luraess/parallel-gpu-workshop-JuliaCon21/actions)
+
+**[JuliaCon 2021 workshop | Fri, July 23, 10am-1pm ET (16:00-19:00 CEST)](https://pretalx.com/juliacon2021/featured/)**
 
 👉 **Organisation notes:**
 - 💡 The short course material (available on this repository) **was just updated - fetch the latest versions!**
@@ -34,21 +34,21 @@ We will use these two Julia modules to design and implement a GPU application th
 1. [**Part 1**](#part-1---julia-and-iterative-solvers) - You will learn about parallel and distributed computing and iterative solvers.
 2. [**Part 2**](#part-2---solving-ice-flow-pdes-on-gpus) - You will implement a GPU parallel PDE solver to predict ice flow dynamics on real topography.
 
-<!-- ######################################################################### HERE -->
-
-By the end of this short course, you will:
-- Have an iterative GPU PDE solver that predicts ice-flow;
+By the end of this workshop, you will:
+- Have a GPU PDE solver that predicts ice-flow;
 - Have a Julia code that achieves similar performance than legacy codes (C, CUDA, MPI);
-- Know how the Julia language solves the "two-language problem";
 - Be able to leverage the computing power of modern GPU accelerated servers and supercomputers.
 
-> 💡 **Disclaimer**
+<!-- > 💡 **Disclaimer**
 >- The solvers presented in this short course, based on the **pseudo-transient method**, enable to solve PDEs iteratively and are well-suited for parallel execution (on GPUs). It is **not** the purpose of this course to provide an extensive overview of various solution techniques.
->- The performance assessment is done using the time / iteration metric which reflects the ability of the algorithm to efficiently exploit the memory bandwidth of the (parallel) hardware. Further performance considerations regarding the metric can be found [here](https://github.com/omlins/ParallelStencil.jl).
+>- The performance assessment is done using the time / iteration metric which reflects the ability of the algorithm to efficiently exploit the memory bandwidth of the (parallel) hardware. Further performance considerations regarding the metric can be found [here](https://github.com/omlins/ParallelStencil.jl). -->
 
 ⤴️ [_back to content_](#content)
 
-# About this repository
+
+<!-- ######################################################################### HERE -->
+
+<!-- # About this repository
 The course repository lists following folders and items:
 - the [data](data) folder contains various low resolution Greenland input data (bedrock topography, surface elevation, ice thickness, masks, ...) downscaled from [BedMachine Greenland v3] - note the filenames include grid resolution information `(nx, ny)`;
 - the [docs](docs) folder contains documentation linked in the [README](README.md);
@@ -514,7 +514,7 @@ Check out the [performance metric section](https://github.com/omlins/ParallelSte
 ## Multi-XPU implementation
 Check out [this material](https://github.com/luraess/geo-hpc-course#running-julia-mpi) to figure out how combining [ImplicitGlobalGrid.jl] to [ParallelStencil.jl] enables efficient distributed memory parallelisation on multiple XPUs.
 
-⤴️ [_back to extras_](#extras)
+⤴️ [_back to extras_](#extras) -->
 
 
 # Further reading
