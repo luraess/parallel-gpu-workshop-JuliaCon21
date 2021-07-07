@@ -1,22 +1,19 @@
 # Solving differential equations in parallel on GPUs
-### Workshop - JuliaCon 2021
+
+**[JuliaCon 2021 workshop | Fri, July 23, 10am-1pm ET (16:00-19:00 CEST)](https://pretalx.com/juliacon2021/featured/)**
 
 [![Build Status](https://github.com/luraess/parallel-gpu-workshop-JuliaCon21/workflows/CI/badge.svg)](https://github.com/luraess/parallel-gpu-workshop-JuliaCon21/actions)
-
-
-
----
-
-
-
-**[vEGU2021: SC4.6 Solving differential equations in parallel with Julia | Thu, 29 Apr, 16:00–17:00 (CEST)](https://meetingorganizer.copernicus.org/EGU21/session/38986)**
 
 👉 **Organisation notes:**
 - 💡 The short course material (available on this repository) **was just updated - fetch the latest versions!**
 - 👉 **Make sure to go through [Getting started](docs/getting-started.md) before the start of the course.**
 - Further interests in solving PDEs with Julia on GPUs❓
-    - Sign-up (free) for a hands-on workshop at [JuliaCon2021](https://juliacon.org/2021/)
     - Check out this [online geo-HPC tutorial](https://github.com/luraess/geo-hpc-course)
+
+---
+
+
+
 
 ----
 This short course covers trendy areas in modern geocomputing with broad geoscientific applications. The physical processes governing natural systems' evolution are often mathematically described as systems of differential equations. A performant numerical implementation of the solving algorithm leveraging modern hardware is key and permits to tackle problems that were technically not possible a decade ago.
