@@ -39,16 +39,16 @@ end
 
 do_visu, do_save = false, false # disable plotting & saving
 
-# for (fl, H_ref) in tests_1d
-#     lx = 10.0        # domain size
-#     nx = 256         # numerical grid resolution
-#     dx = lx/nx       # grid size
+for (fl, H_ref) in tests_1d
+    lx = 10.0        # domain size
+    nx = 256         # numerical grid resolution
+    dx = lx/nx       # grid size
 
-#     println("Runninng $fl")
-#     xc, H = include(joinpath(@__DIR__, "../scripts", fl))
-#     @test xc == LinRange(dx/2, lx-dx/2, nx)
-#     @test H[1:27:end] ≈ H_ref
-# end
+    println("Runninng $fl")
+    xc, H = include(joinpath(@__DIR__, "../scripts", fl))
+    @test xc == LinRange(dx/2, lx-dx/2, nx)
+    @test H[1:27:end] ≈ H_ref
+end
 
 ref_data = load_data()
 for (fl, H_ref) in tests_2d
