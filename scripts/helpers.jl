@@ -26,7 +26,8 @@ function mass_balance_constants(xc, yc)
     return grad_b, z_ELA, b_max
 end
 
-datadir = joinpath(@__DIR__, "../data")
+datadir = "../data"
+# datadir = joinpath(@__DIR__, "../data")
 bm_file = joinpath(datadir, "BedMachineGreenland-2017-09-20.nc")
 
 """

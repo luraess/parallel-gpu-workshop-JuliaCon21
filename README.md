@@ -12,11 +12,7 @@
 
 ---
 
-This workshop covers trendy areas in modern numerical computing with examples from geoscientific applications. The physical processes governing natural systems' evolution are often mathematically described as systems of differential equations. Fast and accurate solutions require numerical implementations to leverage modern parallel hardware.
-
-The workshop consists of 2 parts:
-1. You will learn about parallel and distributed computing and iterative solvers.
-2. You will implement a PDE solver to predict ice flow dynamics on real topography.
+This workshop covers trendy areas in modern numerical computing with examples from geoscientific applications. The physical processes governing natural systems' evolution are often mathematically described as systems of differential equations or partial differential equations (PDE). Fast and accurate solutions require numerical implementations to leverage modern parallel hardware.
 
 # Content
 * [Objectives](#objectives)
@@ -28,15 +24,17 @@ The workshop consists of 2 parts:
 
 
 # Objectives
-The goal of this short course is to offer an interactive overview on how to solve systems of (partial) differential equations in parallel on GPUs using the [Julia language]. [Julia] combines high-level language simplicity and low-level language performance. The resulting codes and applications are fast, short and readable \[[1][JuliaCon20a], [2][JuliaCon20b], [3][JuliaCon19]\].
+The goal of this workshop is to offer an interactive hands-on to solve systems of differential equations in parallel on GPUs using the [ParallelStencil.jl] and [ImplicitGlobalGrid.jl] Julia modules. [ParallelStencil.jl] permits to write architecture-agnostic parallel high-performance GPU and CPU code and [ImplicitGlobalGrid.jl] renders stencil-based distributed parallelization almost trivial. The resulting codes are fast, short and readable \[[1][JuliaCon20a], [2][JuliaCon20b], [3][JuliaCon19]\].
 
-We will design and implement a numerical algorithm that predicts ice flow dynamics over mountainous topography (Greenland) using GPU computing (e.g. Fig. below). We will discretise the shallow ice approximation (SIA) equations in our ice flow solver to assess Greenland's ice cap evolution as function of a climate scenario.
+We will use these two Julia modules to design and implement a GPU application that predicts ice flow dynamics over mountainous topography (Greenland - e.g. Fig. below). We will discretise the shallow ice approximation (SIA) equations in our ice flow solver to assess Greenland's ice cap evolution as function of a climate scenario.
 
 ![Greenland ice cap](docs/greenland_1.png)
 
-**The online course consists of 2 parts:**
-1. [**Part 1**](#part-1---julia-and-iterative-solvers) - You will learn about the [Julia language] and iterative PDE solvers.
+**The workshop consists of 2 parts:**
+1. [**Part 1**](#part-1---julia-and-iterative-solvers) - You will learn about parallel and distributed computing and iterative solvers.
 2. [**Part 2**](#part-2---solving-ice-flow-pdes-on-gpus) - You will implement a GPU parallel PDE solver to predict ice flow dynamics on real topography.
+
+<!-- ######################################################################### HERE -->
 
 By the end of this short course, you will:
 - Have an iterative GPU PDE solver that predicts ice-flow;
