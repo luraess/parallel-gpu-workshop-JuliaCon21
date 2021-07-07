@@ -56,7 +56,7 @@ if !@isdefined do_visu; do_visu = true end
         opts = (aspect_ratio=1, yaxis=font(fontsize, "Courier"), xaxis=font(fontsize, "Courier"),
                 ticks=nothing, framestyle=:box, titlefontsize=fontsize, titlefont="Courier", colorbar_title="",
                 xlabel="Lx", ylabel="Ly", xlims=(xc[1],xc[end]), ylims=(yc[1],yc[end]), clims=(0.,1.))
-        display(heatmap(xc, yc, H; c=:davos, title="implicit diffusion (nt=$it, iters=$ittot)", opts...))
+        display(heatmap(xc, yc, H; c=:davos, title="damped diffusion (nt=$it, iters=$ittot)", opts...))
     end
     return xc, yc, H0
 end
