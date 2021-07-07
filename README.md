@@ -12,12 +12,11 @@
 
 ---
 
+This workshop covers trendy areas in modern numerical computing with examples from geoscientific applications. The physical processes governing natural systems' evolution are often mathematically described as systems of differential equations. Fast and accurate solutions require numerical implementations to leverage modern parallel hardware.
 
-
-
-----
-This short course covers trendy areas in modern geocomputing with broad geoscientific applications. The physical processes governing natural systems' evolution are often mathematically described as systems of differential equations. A performant numerical implementation of the solving algorithm leveraging modern hardware is key and permits to tackle problems that were technically not possible a decade ago.
-
+The workshop consists of 2 parts:
+1. You will learn about parallel and distributed computing and iterative solvers.
+2. You will implement a PDE solver to predict ice flow dynamics on real topography.
 
 # Content
 * [Objectives](#objectives)
