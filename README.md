@@ -1,12 +1,13 @@
 # Solving differential equations in parallel on GPUs
 ### Workshop - JuliaCon 2021
 
-More to come soon 🚀
+[![Build Status](https://github.com/luraess/parallel-gpu-workshop-JuliaCon21/workflows/CI/badge.svg)](https://github.com/luraess/parallel-gpu-workshop-JuliaCon21/actions)
+
 
 
 ---
 
-[![Build Status](https://github.com/luraess/julia-parallel-course-EGU21/workflows/CI/badge.svg)](https://github.com/luraess/julia-parallel-course-EGU21/actions)
+
 
 **[vEGU2021: SC4.6 Solving differential equations in parallel with Julia | Thu, 29 Apr, 16:00–17:00 (CEST)](https://meetingorganizer.copernicus.org/EGU21/session/38986)**
 
