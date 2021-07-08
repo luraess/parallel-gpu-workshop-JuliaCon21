@@ -172,6 +172,7 @@ This section lists the material discussed within this 3h workshop:
     * [Parallel CPU implementation](#parallel-cpu-implementation)
     * [GPU implementation](#gpu-implementation)
     * [XPU implementation](#xpu-implementation)
+    * [Performance and scaling](#performance-and-scaling)
 * [Part 2 - solving ice flow PDEs on GPUs](#part-2---solving-ice-flow-pdes-on-gpus)
     * [SIA equation](#sia-equation)
     * [SIA implementation](#sia-implementation)
@@ -213,7 +214,7 @@ For more info see https://docs.julialang.org.
 ⤴️ [_back to workshop material_](#workshop-material) -->
 
 ### Diffusion equation
-Let's start with a 2D non-linear diffusion example to implement both an explicit and iterative implicit PDE solver:
+Let's start with a 2D nonlinear diffusion example to implement both an explicit and iterative implicit PDE solver:
 
 dH/dt = ∇.(H^3 ∇H)
 
@@ -229,30 +230,41 @@ The [`diffusion_2D_expl.jl`](scripts/diffusion_2D_expl.jl) code implements an it
 H0 = exp(-(x-lx/2.0)^2 -(y-ly/2.0)^2)
 ```
 
-![](docs/diffusion_expl.png)
+![](docs/diff2D_expl.png)
 
-But now, you may ask: can we use an implicit algorithm to side-step the CFL-condition, control the (physically motivated) time steps `dt` _**and**_ keep it "matrix-free" ?
+A simple way to solve nonlinear diffusion, BUT:
+- given the explicit nature of the scheme we have a restricitve limitation on the maximal allowed time step (subject to the CFL stability condition):
+  ```md
+  dt = minimum(min(dx, dy)^2 ./inn(H).^npow./4.1)
+  ```
+- there might be loss of accuracy since we use an explicit scheme for a nonlienar problem.
+
+So now you may ask: can we use an implicit algorithm to ensure nonlinear accuracy, side-step the CFL-condition, control the (physically motivated) time steps `dt` _**and**_ keep it "matrix-free" ?
 
 ⤴️ [_back to workshop material_](#workshop-material)
 
 ### Iterative solvers
-_by Ludovic Räss_
-
 The [`diffusion_2D_impl.jl`](scripts/diffusion_2D_impl.jl) code implements an iterative, implicit solution of eq. (1). **How ?** We include the physical time derivative `dH/dt=(H-Hold)/dt` in the previous rate of change `dHdt` to define the residual `ResH`
 ```md
 ResH = -(H-Hold)/dt -dqHx/dx -dqHy/dy
 ```
 and iterate until the values of `ResH` (the residual of the eq. (1)) drop below a defined tolerance level `tol`.
 
-![](docs/diffusion_impl.png)
+![](docs/diff2D_impl.png)
 
-It works, but the "naive" _Picard_ iteration count seems to be pretty high (`niter>7000`). A efficient way to circumvent this is to add "damping" (`damp`) to the rate-of-change `dHdt`, analogous to add friction enabling faster convergence \[[4][Frankel50]\]
+It works, but the "naive" _Picard_ iteration count seems to be pretty high (`niter>800`). A efficient way to circumvent this is to add "damping" (`damp`) to the rate-of-change `dHdt`, analogous to add friction enabling faster convergence \[[4][Frankel50]\]
 ```md
 dHdt = ResH + damp*dHdt
 ```
-The [`diffusion_2D_damp.jl`](scripts/diffusion_2D_damp.jl) code implements a damped iterative implicit solution of eq. (1). The iteration count drops to `niter~700`. This second order pseudo-transient approach enables fast as the iteration count scales close to _O(N)_ and not _O(N^2)_.
+The [`diffusion_2D_damp.jl`](scripts/diffusion_2D_damp.jl) code implements a damped iterative implicit solution of eq. (1). The iteration count drops to `niter<200`. This second order pseudo-transient approach enables fast as the iteration count scales close to _O(N)_ and not _O(N^2)_; we will do a scaling test at the end of Part 1 in [Performance and scaling](#performance-and-scaling) section.
 
-![](docs/diffusion_damp.png)
+![](docs/diff2D_damp.png)
+
+So far so good, we have a fast implicit iterative solver. But why to bother with implicit, wasn't explicit good enough ? Let's compare the sifference between the explicit and the damped implicit results using the [`compare_expl_impl.jl`](scripts/compare_expl_impl.jl) script:
+
+![](docs/diff2D_expl_impl.png)
+
+We see that the expicit approach over-steepens the nonlinear diffusive front by ~4% (when normalised by the implicit soution).
 
 ### Performance considerations
 Performance evaluation is a complex topic as different metrics would lead to different conclusions. Ultimately, efficient algorithms should minimise the time to solution. For iterative algorithms this means:
@@ -275,6 +287,8 @@ Transform the GPU style CPU version to GPU
 ### XPU implementation
 Move from CPU and GPU to XPU using [ParallelStencil.jl]
 
+
+### Performance and scaling
 <!-- ## Part 2 - solving ice flow PDEs on GPUs
 
 ### SIA equation applied to the Greenland Ice Sheet

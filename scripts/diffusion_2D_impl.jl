@@ -3,11 +3,12 @@ using Plots, Printf, LinearAlgebra
 # enable plotting by default
 if !@isdefined do_visu; do_visu = true end
 
+# finite-difference support functions
 @views av_xi(A) = 0.5*(A[1:end-1,2:end-1].+A[2:end,2:end-1])
 @views av_yi(A) = 0.5*(A[2:end-1,1:end-1].+A[2:end-1,2:end])
 @views   inn(A) = A[2:end-1,2:end-1]
 
-@views function diffusion_2D(; do_visu=true)
+@views function diffusion_2D_impl(; do_visu=true, save_fig=false)
     # Physics
     lx, ly = 10.0, 10.0   # domain size
     npow   = 3            # power-law exponent
@@ -56,8 +57,9 @@ if !@isdefined do_visu; do_visu = true end
                 ticks=nothing, framestyle=:box, titlefontsize=fontsize, titlefont="Courier", colorbar_title="",
                 xlabel="Lx", ylabel="Ly", xlims=(xc[1],xc[end]), ylims=(yc[1],yc[end]), clims=(0.,1.))
         display(heatmap(xc, yc, H; c=:davos, title="implicit diffusion (nt=$it, iters=$ittot)", opts...))
+        if save_fig savefig("diff2D_impl.png") end
     end
-    return xc, yc, H0
+    return xc, yc, H0, H
 end
 
-@time diffusion_2D(; do_visu=do_visu);
+@time diffusion_2D_impl(; do_visu=do_visu);
