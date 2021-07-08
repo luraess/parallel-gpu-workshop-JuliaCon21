@@ -266,12 +266,25 @@ So far so good, we have a fast implicit iterative solver. But why to bother with
 
 We see that the explicit approach "over-steepens" the nonlinear diffusive front by ~4% (when normalised by the implicit soution).
 
+⤴️ [_back to workshop material_](#workshop-material)
+
 ### Performance considerations
 Performance evaluation is a complex topic as different metrics would lead to different conclusions. Ultimately, efficient algorithms should minimise the time to solution. For iterative algorithms this means:
 1) Ensure fast iterations, maximise the memory bandwidth usage (minimise the time per iteration).
 2) Keep the iteration count as low as possible and, in particular, that iteration count scales aroung _O(n)_ with the numerical resolution _n_.
 
- ⚠️ TO DO add T_eff definition
+Many-core processors as GPUs are throughput-oriented systems that use their massive parallelism to hide latency. On the scientific application side, most algorithms require only a few operations or flops compared to the amount of numbers or bytes accessed from main memory, and thus are significantly memory bound; the Flop/s metric is no longer the most adequate for reporting performance. This status motivated the development of a memory throughput-based performance evaluation metric, `T_eff`, to evaluate the performance of iterative stencil-based solvers \[[1][JuliaCon20a]\].
+
+The effective memory access, `A_eff` [GB], is the the sum of twice the memory footprint of the unknown fields, `D_u`, (fields that depend on their own history and that need to be updated every iteration) and the known fields, `D_k`, that do not change in time. The effective memory access divided by the execution time per iteration, `t_it` [sec], defines the effective memory throughput, `T_eff` [GB/s].
+
+```md
+A_eff = 2 D_u + D_k
+T_eff = A_eff/t_it
+```
+
+The upper bound of `T_eff` is `T_peak`. Defining the `T_eff` metric, we assume that 1) we evaluate an iterative stencil-based solver, 2) the problem size is much larger than the cache sizes and 3) we do not rely on time blocking (reasonable assumption for real-world applications). An important concept is not to include fields within the effective memory access that do not depend on their own history (e.g. fluxes); such fields can be re-computed on the fly or stored on-chip.
+
+Fore more details, check out the [performance related section](https://github.com/omlins/ParallelStencil.jl#performance-metric) from [ParallelStencil.jl].
 
 ⤴️ [_back to workshop material_](#workshop-material)
 
