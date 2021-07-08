@@ -256,15 +256,15 @@ It works, but the "naive" _Picard_ iteration count seems to be pretty high (`nit
 ```md
 dHdt = ResH + damp*dHdt
 ```
-The [`diffusion_2D_damp.jl`](scripts/diffusion_2D_damp.jl) code implements a damped iterative implicit solution of eq. (1). The iteration count drops to `niter<200`. This second order pseudo-transient approach enables fast as the iteration count scales close to _O(N)_ and not _O(N^2)_; we will do a scaling test at the end of Part 1 in [Performance and scaling](#performance-and-scaling) section.
+The [`diffusion_2D_damp.jl`](scripts/diffusion_2D_damp.jl) code implements a damped iterative implicit solution of eq. (1). The iteration count drops to `niter<200`. This second order pseudo-transient approach enables the iteration count to scales close to _O(N)_ and not _O(N^2)_; we will do a scaling test at the end of Part 1 in [Performance and scaling](#performance-and-scaling) section.
 
 ![](docs/diff2D_damp.png)
 
-So far so good, we have a fast implicit iterative solver. But why to bother with implicit, wasn't explicit good enough ? Let's compare the sifference between the explicit and the damped implicit results using the [`compare_expl_impl.jl`](scripts/compare_expl_impl.jl) script:
+So far so good, we have a fast implicit iterative solver. But why to bother with implicit, wasn't explicit good enough ? Let's compare the difference between the explicit and the damped implicit results using the [`compare_expl_impl.jl`](scripts/compare_expl_impl.jl) script:
 
 ![](docs/diff2D_expl_impl.png)
 
-We see that the expicit approach over-steepens the nonlinear diffusive front by ~4% (when normalised by the implicit soution).
+We see that the explicit approach "over-steepens" the nonlinear diffusive front by ~4% (when normalised by the implicit soution).
 
 ### Performance considerations
 Performance evaluation is a complex topic as different metrics would lead to different conclusions. Ultimately, efficient algorithms should minimise the time to solution. For iterative algorithms this means:
