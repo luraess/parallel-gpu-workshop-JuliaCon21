@@ -19,7 +19,7 @@ This workshop covers trendy areas in modern numerical computing with examples fr
 * [Objectives](#objectives)
 * [About this repository](#about-this-repository)
 * [Getting started](#getting-started) _(not discussed during the workshop)_
-* 👉 [Short course material](#short-course-material)
+* 👉 [Workshop material](#workshop-material)
 * [Extras](#extras) _(optional if time permits)_
 * [Further reading](#further-reading)
 
@@ -41,19 +41,19 @@ By the end of this workshop, you will:
 - Be able to leverage the computing power of modern GPU accelerated servers and supercomputers.
 
 <!-- > 💡 **Disclaimer**
->- The solvers presented in this short course, based on the **pseudo-transient method**, enable to solve PDEs iteratively and are well-suited for parallel execution (on GPUs). It is **not** the purpose of this course to provide an extensive overview of various solution techniques.
+>- The solvers presented in this workshop, based on the **pseudo-transient method**, enable to solve PDEs iteratively and are well-suited for parallel execution (on GPUs). It is **not** the purpose of this workshop to provide an extensive overview of various solution techniques.
 >- The performance assessment is done using the time / iteration metric which reflects the ability of the algorithm to efficiently exploit the memory bandwidth of the (parallel) hardware. Further performance considerations regarding the metric can be found [here](https://github.com/omlins/ParallelStencil.jl). -->
 
 ⤴️ [_back to content_](#content)
 
 
 # About this repository
-The course repository lists following folders and items:
+The workshop repository lists following folders and items:
 - the [data](data) folder contains various low resolution Greenland input data (bedrock topography, surface elevation, ice thickness, masks, ...) downscaled from [BedMachine Greenland v3] - note the filenames include grid resolution information `(nx, ny)`;
 - the [docs](docs) folder contains documentation linked in the [README](README.md);
 - the various _output_ folder will contain the codes output, mainly figures in `png` format;
-- the [scripts](scripts) folder contains the scripts this course is about 🎉
-- the [extras](extras) folder contains supporting course material (not discussed live during the course);
+- the [scripts](scripts) folder contains the scripts this workshop is about 🎉
+- the [extras](extras) folder contains supporting workshop material (not discussed live during the workshop);
 - the [`Project.toml`](Project.toml) file is the Julia project file, tracking the used packages and enabling a reproducible environment.
 
 > 👉 This repository is an interactive and dynamic source of information related to the workshop.
@@ -68,7 +68,7 @@ The course repository lists following folders and items:
 
 The detailed steps in the dropdown hereafter will get you started with:
 1. Installing Julia v1.6
-2. Running the scripts from the course repository.
+2. Running the scripts from the workshop repository.
 
 <details>
 <summary>CLICK HERE for the 🚀 getting started steps 🚀</summary>
@@ -96,8 +96,8 @@ to make sure that the Julia REPL (aka terminal) starts.  Exit with `Ctrl-d`.
 If you'd enjoy a more IDE type of environment, [check out VS Code](https://code.visualstudio.com). Follow the [installation directions](https://github.com/julia-vscode/julia-vscode#getting-started) for the [Julia VS Code extension](https://www.julia-vscode.org).
 
 ## Running the scripts
-To get started with the course,
-1. clone (or download the ZIP archive) the course repository ([help here](https://docs.github.com/en/github/creating-cloning-and-archiving-repositories/cloning-a-repository))
+To get started with the workshop,
+1. clone (or download the ZIP archive) the workshop repository ([help here](https://docs.github.com/en/github/creating-cloning-and-archiving-repositories/cloning-a-repository))
 ```sh
 git clone https://github.com/luraess/parallel-gpu-workshop-JuliaCon21.git
 ```
@@ -155,21 +155,21 @@ The [CUDA.jl] module permits to launch compute kernels on Nvidia GPUs natively f
 ```sh
 export JULIA_CUDA_USE_BINARYBUILDER=false
 ```
-We will use the GPU acceleration in the [second part](https://github.com/luraess/julia-parallel-course-EGU21#gpu-sia-implementation) of the course.
 
 <br>
 </details>
 
-> 👉 **Note: This course was developed and tested on Julia v1.6. It should work with any Julia version ≥v1.6**. The install configuration were tested on a MacBook Pro running macOS 10.15.7, a Linux GPU server running Ubuntu 20.04 LTS and a Linux GPU server running CentOS 8.
+> 👉 **Note: This workshop was developed and tested on Julia v1.6. It should work with any Julia version ≥v1.6**. The install configuration were tested on a MacBook Pro running macOS 10.15.7, a Linux GPU server running Ubuntu 20.04 LTS and a Linux GPU server running CentOS 8.
 
 
-# Short course material
+# Workshop material
 This section lists the material discussed within this 3h workshop:
 * [Part 1 - GPU computing and iterative solvers](#part-1---gpu-computing-and-iterative-solvers)
     <!-- * [Why Julia](#why-julia) -->
     * [Diffusion equation](#diffusion-equation)
     * [Iterative solvers](#iterative-solvers)
     * [Performance considerations](#performance-considerations)
+    * [Parallel CPU implementation](#parallel-cpu-implementation)
     * [GPU implementation](#gpu-implementation)
     * [XPU implementation](#xpu-implementation)
 * [Part 2 - solving ice flow PDEs on GPUs](#part-2---solving-ice-flow-pdes-on-gpus)
@@ -179,7 +179,7 @@ This section lists the material discussed within this 3h workshop:
     * [XPU SIA implementation](#xpu-sia-implementation)
     * [Greenland's ice cap evolution](#greenlands-ice-cap-evolution)
 
-💡 In this course we will implement a 2D nonlinear diffusion equation on GPUs in Julia using the finite-difference method and an iterative solving approach. The goal is to resolve the shallow ice approximation (SIA) and predict ice flow over Greenland.
+💡 In this workshop we will implement a 2D nonlinear diffusion equation on GPUs in Julia using the finite-difference method and an iterative solving approach. The goal is to resolve the shallow ice approximation (SIA) and predict ice flow over Greenland.
 
 ⤴️ [_back to content_](#content)
 
@@ -193,13 +193,13 @@ Julia is a modern, general-purpose programming language unifying interactive, hi
 
 The main reason to use Julia for scientific computing is:
 - high performance & productivity, ditto
-- a good package manager (see, e.g., the [`Project.toml`](Project.toml) of this course) making reproducible science easier
+- a good package manager (see, e.g., the [`Project.toml`](Project.toml) of this workshop) making reproducible science easier
 - a rapidly expanding number of packages, with many at the forefront of research (e.g. GPU-packages, differential equations, machine learning, automatic differentiation)
 - a friendly community with a large number of scientific users
 
 The main reason to use Julia for GPU computing is that it indeed solves the two-language problem in this domain: it works well from prototyping an idea with a simple serial code to massively parallel, multi-node GPU production code.
 
-A short introduction to Julia will be given using the first numerical example of this course (next section).  A very short summary of features covered:
+A short introduction to Julia will be given using the first numerical example of this workshop (next section).  A very short summary of features covered:
 - third-party packages can be installed with the package manager (see [Package installation](docs/getting-started.md#packages-installation))
 - use a package with `using XYZ`
 - run the code in a file with `include("abc.jl")`
@@ -210,7 +210,7 @@ A short introduction to Julia will be given using the first numerical example of
 
 For more info see https://docs.julialang.org.
 
-⤴️ [_back to course material_](#short-course-material) -->
+⤴️ [_back to workshop material_](#workshop-material) -->
 
 ### Diffusion equation
 Let's start with a 2D non-linear diffusion example to implement both an explicit and iterative implicit PDE solver:
@@ -233,7 +233,7 @@ H0 = exp(-(x-lx/2.0)^2 -(y-ly/2.0)^2)
 
 But now, you may ask: can we use an implicit algorithm to side-step the CFL-condition, control the (physically motivated) time steps `dt` _**and**_ keep it "matrix-free" ?
 
-⤴️ [_back to course material_](#short-course-material)
+⤴️ [_back to workshop material_](#workshop-material)
 
 ### Iterative solvers
 _by Ludovic Räss_
@@ -261,8 +261,19 @@ Performance evaluation is a complex topic as different metrics would lead to dif
 
  ⚠️ TO DO add T_eff definition
 
-⤴️ [_back to course material_](#short-course-material)
+⤴️ [_back to workshop material_](#workshop-material)
 
+### Parallel CPU implementation
+Move from broadcasting to loop version, with threads or tturbo
+
+Do a CPU but GPU style version
+
+### GPU implementation
+Transform the GPU style CPU version to GPU
+
+
+### XPU implementation
+Move from CPU and GPU to XPU using [ParallelStencil.jl]
 
 <!-- ## Part 2 - solving ice flow PDEs on GPUs
 
@@ -303,7 +314,7 @@ grad_b = (1.3517 - 0.014158*LAT)/100.0*0.91
 where `LAT` is the latitude (taken from \[[5][Machgut16]\]). The equilibrium line altitude `z_ELA` (where accumulation = ablation) is latitude dependent, ranging from 1300m (South) to 1000m (North) as suggested by \[[5][Machgut16]\].
 
 
-⤴️ [_back to course material_](#short-course-material)
+⤴️ [_back to workshop material_](#workshop-material)
 
 ### SIA implementation
 The [`iceflow.jl`](scripts/iceflow.jl) code implements the 2D SIA equations using the iterative implicit damped formulation as in [`diffusion_1D_damp.jl`](scripts/diffusion_1D_damp.jl) using the pseudo-transient approach. The calculation of the SIA PDEs resumes in these 13 lines of Julia code:
@@ -334,14 +345,14 @@ The model output is the ice surface elevation, the ice thickness, the ice veloci
 
 ![](docs/iceflow_out1.png)
 
-This implementation of the SIA equations solves the steady-state (i.e. the physical time derivative being removed as `dt->∞`). The last part of this course ([Greenland's ice cap evolution](#greenland-s-ice-cap-evolution)) will show how to achieve an (implicit) ice flow predictions over a specific time span `dt` by including the physical time derivative in the `ResH` term.
+This implementation of the SIA equations solves the steady-state (i.e. the physical time derivative being removed as `dt->∞`). The last part of this workshop ([Greenland's ice cap evolution](#greenland-s-ice-cap-evolution)) will show how to achieve an (implicit) ice flow predictions over a specific time span `dt` by including the physical time derivative in the `ResH` term.
 
 #### CPU Performance
 The figure below depicts the time 1000 iterations (or pseudo-time steps) take running the [`iceflow.jl`](scripts/iceflow.jl) code on a Intel Xeon Gold 6244 (1 thread - plain Julia):
 
 ![](docs/timingJulia.png)
 
-⤴️ [_back to course material_](#short-course-material)
+⤴️ [_back to workshop material_](#workshop-material)
 
 ### GPU SIA implementation
 So now we have a cool iterative and implicit SIA solver in less than 100 lines of code 🎉. Good enough for low resolution calculations. What if we need higher resolution and faster time to solution ? Parallel and GPU computing makes it possible. Let's start from the [`iceflow.jl`](scripts/iceflow.jl) code and port it to GPU (with some intermediate steps).
@@ -441,7 +452,7 @@ The figure below depicts the time 1000 iterations (or pseudo-time steps) take ru
 
 ![](docs/timing.png)
 
-⤴️ [_back to course material_](#short-course-material)
+⤴️ [_back to workshop material_](#workshop-material)
 
 ### Greenland's ice cap evolution
 We can finally use our XPU ice flow solver to simulate the evolution of Greenland's ice cap for a specific climate scenario. The steps are following:
@@ -452,10 +463,10 @@ We can finally use our XPU ice flow solver to simulate the evolution of Greenlan
 
 > Note that our climate scenario may reflect some extreme warming over the next 2500yrs.
 
-⤴️ [_back to course material_](#short-course-material)
+⤴️ [_back to workshop material_](#workshop-material)
 
 # Extras
-> ⚠️ Due to the time limitation, the short course will not cover the [extras](#extras) material. This information complements the course's main content and may provide intermediate and/or additional development steps.
+> ⚠️ Due to the time limitation, the workshop will not cover the [extras](#extras) material. This information complements the workshop's main content and may provide intermediate and/or additional development steps.
 
 Extra material comprises:
 * [Porting the diffusion equation to GPUs](#porting-the-diffusion-equation-to-gpus)
@@ -597,7 +608,7 @@ The ice thickness obtained from the inversion procedure can be further compared 
 ⤴️ [_back to extras_](#extras)
 
 ## Performance metric
-Majority of stencil based codes as in this course are memory bounded, meaning the limiting factor in performance is the rate at which memory is transferred from and back between the memory and the arithmetic units. The maximal rate at which the memory transfers occur is the memory copy rate, in the order of 50 GB/s for CPUs and about 1 TB/s for modern GPUs. The effective memory throughput metric (T_eff) measures how good an iterative stencil-based algorithm performs in terms of memory throughput, to be compared to the memory copy rate.
+Majority of stencil based codes as in this workshop are memory bounded, meaning the limiting factor in performance is the rate at which memory is transferred from and back between the memory and the arithmetic units. The maximal rate at which the memory transfers occur is the memory copy rate, in the order of 50 GB/s for CPUs and about 1 TB/s for modern GPUs. The effective memory throughput metric (T_eff) measures how good an iterative stencil-based algorithm performs in terms of memory throughput, to be compared to the memory copy rate.
 
 Check out the [performance metric section](https://github.com/omlins/ParallelStencil.jl#performance-metric) from the [ParallelStencil.jl] module and this [JuliaCon2020][JuliaCon20a] presentation \[[1][JuliaCon20a]\].
 
