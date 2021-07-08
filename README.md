@@ -31,9 +31,10 @@ We will use these two Julia packages to design and implement a nonlinear diffusi
 
 ![Greenland ice cap](docs/greenland_1.png)
 
-**The workshop consists of 2 parts:**
-1. [**Part 1**](#part-1---gpu-computing-and-iterative-solvers) - You will learn about parallel and distributed computing on GPUs and iterative solvers.
-2. [**Part 2**](#part-2---solving-ice-flow-pdes-on-gpus) - You will implement a GPU parallel PDE solver to predict ice flow dynamics on real topography.
+**The workshop consists of 3 parts:**
+1. [**Part 1**](#part-1---fast-iterative-solvers) - You will learn about accelerating iterative solvers.
+2. [**Part 2**](#part-2---parallel-and-gpu-computing) - You will port the iterative solver from to parallel CPU and GPUs.
+3. [**Part 3**](#part-3---solving-ice-flow-pdes-on-gpus) - You will implement a GPU parallel PDE solver to predict ice flow dynamics on real topography.
 
 By the end of this workshop, you will:
 - Have a GPU PDE solver that predicts ice-flow;
@@ -164,16 +165,17 @@ export JULIA_CUDA_USE_BINARYBUILDER=false
 
 # Workshop material
 This section lists the material discussed within this 3h workshop:
-* [Part 1 - GPU computing and iterative solvers](#part-1---gpu-computing-and-iterative-solvers)
+* [Part 1 - GPU computing and iterative solvers](#part-1---fast-iterative-solvers)
     <!-- * [Why Julia](#why-julia) -->
     * [Diffusion equation](#diffusion-equation)
     * [Iterative solvers](#iterative-solvers)
     * [Performance considerations](#performance-considerations)
+* [Part 2 - Parallel and GPU computing](#part-2---parallel-and-gpu-computing)
     * [Parallel CPU implementation](#parallel-cpu-implementation)
     * [GPU implementation](#gpu-implementation)
     * [XPU implementation](#xpu-implementation)
     * [Performance and scaling](#performance-and-scaling)
-* [Part 2 - solving ice flow PDEs on GPUs](#part-2---solving-ice-flow-pdes-on-gpus)
+* [Part 3 - Solving ice flow PDEs on GPUs](#part-2---solving-ice-flow-pdes-on-gpus)
     * [SIA equation](#sia-equation)
     * [SIA implementation](#sia-implementation)
     * [GPU SIA implementation](#gpu-sia-implementation)
@@ -185,8 +187,8 @@ This section lists the material discussed within this 3h workshop:
 ⤴️ [_back to content_](#content)
 
 
-## Part 1 - GPU computing and iterative solvers
-
+## Part 1 - Fast iterative solvers
+In this first part of the workshop we will implement an efficient implicit iterative and matrix-free solver to solve the time-dependent nonlinear diffusion equation in 2D.
 <!-- ### Why Julia
 _by Mauro Werder_
 
@@ -256,7 +258,7 @@ It works, but the "naive" _Picard_ iteration count seems to be pretty high (`nit
 ```md
 dHdt = ResH + damp*dHdt
 ```
-The [`diffusion_2D_damp.jl`](scripts/diffusion_2D_damp.jl) code implements a damped iterative implicit solution of eq. (1). The iteration count drops to `niter<200`. This second order pseudo-transient approach enables the iteration count to scales close to _O(N)_ and not _O(N^2)_; we will do a scaling test at the end of Part 1 in [Performance and scaling](#performance-and-scaling) section.
+The [`diffusion_2D_damp.jl`](scripts/diffusion_2D_damp.jl) code implements a damped iterative implicit solution of eq. (1). The iteration count drops to `niter<200`. This second order pseudo-transient approach enables the iteration count to scales close to _O(N)_ and not _O(N^2)_; we will do a scaling test at the end of Part 2 in [Performance and scaling](#performance-and-scaling) section.
 
 ![](docs/diff2D_damp.png)
 
@@ -269,9 +271,11 @@ We see that the explicit approach "over-steepens" the nonlinear diffusive front 
 ⤴️ [_back to workshop material_](#workshop-material)
 
 ### Performance considerations
-Performance evaluation is a complex topic as different metrics would lead to different conclusions. Ultimately, efficient algorithms should minimise the time to solution. For iterative algorithms this means:
-1) Ensure fast iterations, maximise the memory bandwidth usage (minimise the time per iteration).
-2) Keep the iteration count as low as possible and, in particular, that iteration count scales aroung _O(n)_ with the numerical resolution _n_.
+Efficient algorithms should minimise the time to solution. For iterative algorithms this means:
+1. Ensure fast iterations
+2. Keep the iteration count as low as possible
+
+We just achieved (2.) with the implicit damped approach. Let's fix (1.).
 
 Many-core processors as GPUs are throughput-oriented systems that use their massive parallelism to hide latency. On the scientific application side, most algorithms require only a few operations or flops compared to the amount of numbers or bytes accessed from main memory, and thus are significantly memory bound; the Flop/s metric is no longer the most adequate for reporting performance. This status motivated the development of a memory throughput-based performance evaluation metric, `T_eff`, to evaluate the performance of iterative stencil-based solvers \[[1][JuliaCon20a]\].
 
@@ -286,9 +290,19 @@ The upper bound of `T_eff` is `T_peak`. Defining the `T_eff` metric, we assume t
 
 Fore more details, check out the [performance related section](https://github.com/omlins/ParallelStencil.jl#performance-metric) from [ParallelStencil.jl].
 
+For the 2D time-dependent diffusion equation, we thus have `D_u=2` and `D_k=1`:
+```md
+A_eff = (2 x 1 + 1 x 1) x 8 x nx x ny / 1e9 [GB]
+```
+Let's implement this measure in the following scripts.
+
 ⤴️ [_back to workshop material_](#workshop-material)
 
+## Part 2 - Parallel and GPU computing
+In this second part of the workshop, we will port the  [`diffusion_2D_damp.jl`](scripts/diffusion_2D_damp.jl) script implemented using Julia CPU array broadcasting to parallel CPU and high-performance GPU implementations.
+
 ### Parallel CPU implementation
+The first step is to modify the latest diffusion code by 
 Move from broadcasting to loop version, with threads or tturbo
 
 Do a CPU but GPU style version
@@ -302,7 +316,10 @@ Move from CPU and GPU to XPU using [ParallelStencil.jl]
 
 
 ### Performance and scaling
-<!-- ## Part 2 - solving ice flow PDEs on GPUs
+
+
+
+<!-- ## Part 3 - Solving ice flow PDEs on GPUs
 
 ### SIA equation applied to the Greenland Ice Sheet
 Let's move from the simple **1D linear diffusion** example to the shallow ice approximation (SIA) equation, a **2D nonlinear diffusion** equation for ice thickness _H_:
