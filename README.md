@@ -6,7 +6,7 @@
 
 👉 **Organisation notes:**
 - 💡 The workshop material (available on this repository) **was just updated - fetch the latest versions!**
-- 👉 **Make sure to go through [Getting started](docs/getting-started.md) before the start of the workshop.**
+- 👉 **Make sure to go through [Getting started](#getting-started) before the start of the workshop.**
 - Further interests in solving PDEs with Julia on GPUs❓
     - Check out this [online geo-HPC tutorial](https://github.com/luraess/geo-hpc-course)
     - Visit [EGU21's short course repo](https://github.com/luraess/julia-parallel-course-EGU21)
@@ -159,7 +159,6 @@ We will use the GPU acceleration in the [second part](https://github.com/luraess
 
 <br>
 </details>
-<br>
 
 > 👉 **Note: This course was developed and tested on Julia v1.6. It should work with any Julia version ≥v1.6**. The install configuration were tested on a MacBook Pro running macOS 10.15.7, a Linux GPU server running Ubuntu 20.04 LTS and a Linux GPU server running CentOS 8.
 
