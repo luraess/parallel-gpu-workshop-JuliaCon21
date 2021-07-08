@@ -268,7 +268,7 @@ Move from broadcasting to loop version, with threads or tturbo
 
 Do a CPU but GPU style version
 
-### GPU implementation
+### GPU implementation
 Transform the GPU style CPU version to GPU
 
 
