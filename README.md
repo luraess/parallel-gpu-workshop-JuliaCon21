@@ -359,7 +359,7 @@ end
 ```
 > 💡 Note that macros can now take `ix` and `iy` as arguments.
 
-Running [`diffusion_2D_damp_perf_loop.jl`](scripts/diffusion_2D_damp_perf_loop.jl) with `nx = ny = 256` produces following output on a Dual-Core Intel Core i7 processor (MBPro)
+Running [`diffusion_2D_damp_perf_loop.jl`](scripts/diffusion_2D_damp_perf_loop.jl) with `nx = ny = 256` produces following output:
 ```julia-repl
 Time = 0.327 sec, T_eff = 3.90 GB/s (iterTot = 404)
 ```
@@ -391,7 +391,7 @@ compute_update!(H, dHdtau, Hold, npow, dt, damp, nx, ny, dx, dy)
 ```
 > 💡 Note that the outer loop (over `iy`) can be vectorized using a powerful combination of multi-threading capabilities of the CPU and AVX instructions exposed by the LoopVectorzation package 🚀 - kudos.
 
-Running [`diffusion_2D_damp_perf_loop_fun.jl`](scripts/diffusion_2D_damp_perf_loop_fun.jl) with `nx = ny = 256` produces following output on a Dual-Core Intel Core i7 processor (MBPro)
+Running [`diffusion_2D_damp_perf_loop_fun.jl`](scripts/diffusion_2D_damp_perf_loop_fun.jl) with `nx = ny = 256` produces following output:
 ```julia-repl
 Time = 0.046 sec, T_eff = 28.00 GB/s (iterTot = 404)
 ```
