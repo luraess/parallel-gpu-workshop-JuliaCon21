@@ -64,7 +64,7 @@ The course repository lists following folders and items:
 ⤴️ [_back to content_](#content)
 
 # Getting started
-> ⚠️ The workshop will not cover the Getting started steps. These are meant to provide directions to the participant willing to actively try out the examples during the workshop or for Julia newcomers. **It is warmly recommended to perform the [Getting started](docs/getting-started.md) steps before the beginning of the workshop.**
+> ⚠️ The workshop will not cover the Getting started steps. These are meant to provide directions to the participant willing to actively try out the examples during the workshop or for Julia newcomers. **It is warmly recommended to perform the Getting started steps before the beginning of the workshop.**
 
 The detailed steps in the dropdown hereafter will get you started with:
 1. Installing Julia v1.6
@@ -164,11 +164,14 @@ We will use the GPU acceleration in the [second part](https://github.com/luraess
 
 
 # Short course material
-This section lists the material discussed within this 60 min. short course:
-* [Part 1 - Julia and iterative solvers](#part-1---julia-and-iterative-solvers)
-    * [Why Julia](#why-julia)
+This section lists the material discussed within this 3h workshop:
+* [Part 1 - GPU computing and iterative solvers](#part-1---gpu-computing-and-iterative-solvers)
+    <!-- * [Why Julia](#why-julia) -->
     * [Diffusion equation](#diffusion-equation)
     * [Iterative solvers](#iterative-solvers)
+    * [Performance considerations](#performance-considerations)
+    * [GPU implementation](#gpu-implementation)
+    * [XPU implementation](#xpu-implementation)
 * [Part 2 - solving ice flow PDEs on GPUs](#part-2---solving-ice-flow-pdes-on-gpus)
     * [SIA equation](#sia-equation)
     * [SIA implementation](#sia-implementation)
@@ -181,9 +184,9 @@ This section lists the material discussed within this 60 min. short course:
 ⤴️ [_back to content_](#content)
 
 
-<!-- ## Part 1 - Julia and iterative solvers
+## Part 1 - GPU computing and iterative solvers
 
-### Why Julia
+<!-- ### Why Julia
 _by Mauro Werder_
 
 Julia is a modern, general-purpose programming language unifying interactive, high productivity features (like Python, Matlab, etc.) with high performance (like C, Fortran, etc.).  This removes the need to have a separate prototype and production languages (the _two-language problem_).
@@ -207,22 +210,23 @@ A short introduction to Julia will be given using the first numerical example of
 
 For more info see https://docs.julialang.org.
 
-⤴️ [_back to course material_](#short-course-material)
+⤴️ [_back to course material_](#short-course-material) -->
 
 ### Diffusion equation
-Let's start with a 1D linear diffusion example to implement both an explicit and iterative implicit PDE solver:
+Let's start with a 2D non-linear diffusion example to implement both an explicit and iterative implicit PDE solver:
 
-dH/dt = ∇.(D ∇H)
+dH/dt = ∇.(H^3 ∇H)
 
-The diffusion of a quantity `H` over time `t` can be described as (1a) a diffusive flux, (1b) a flux balance and (1c) an update rule:
+The diffusion of a quantity `H` over time `t` can be described as (1a, 1b) a diffusive flux, (1c) a flux balance and (1d) an update rule:
 ```md
-qH    = -D*dH/dx  (1a)
-dHdt  =  -dqH/dx  (1b)
-dH/dt = dHdt      (1c)
+qHx   = -H^3*dH/dx         (1a)
+qHy   = -H^3*dH/dy         (1b)
+dHdt  = -dqHx/dx -dqHy/dy  (1c)
+dH/dt = dHdt               (1d)
 ```
-The [`diffusion_1D_expl.jl`](scripts/diffusion_1D_expl.jl) code implements an iterative and explicit solution of eq. (1) for an initial Gaussian profile:
+The [`diffusion_2D_expl.jl`](scripts/diffusion_2D_expl.jl) code implements an iterative and explicit solution of eq. (1) for an initial Gaussian profile:
 ```md
-H0 = exp(-(x-lx/2.0)^2)
+H0 = exp(-(x-lx/2.0)^2 -(y-ly/2.0)^2)
 ```
 
 ![](docs/diffusion_expl.png)
@@ -234,9 +238,9 @@ But now, you may ask: can we use an implicit algorithm to side-step the CFL-cond
 ### Iterative solvers
 _by Ludovic Räss_
 
-The [`diffusion_1D_impl.jl`](scripts/diffusion_1D_impl.jl) code implements an iterative, implicit solution of eq. (1). **How ?** We include the physical time derivative `dH/dt=(H-Hold)/dt` in the previous rate of change `dHdt` to define the residual `ResH`
+The [`diffusion_2D_impl.jl`](scripts/diffusion_2D_impl.jl) code implements an iterative, implicit solution of eq. (1). **How ?** We include the physical time derivative `dH/dt=(H-Hold)/dt` in the previous rate of change `dHdt` to define the residual `ResH`
 ```md
-ResH = -(H-Hold)/dt -dqH/dx
+ResH = -(H-Hold)/dt -dqHx/dx -dqHy/dy
 ```
 and iterate until the values of `ResH` (the residual of the eq. (1)) drop below a defined tolerance level `tol`.
 
@@ -246,21 +250,21 @@ It works, but the "naive" _Picard_ iteration count seems to be pretty high (`nit
 ```md
 dHdt = ResH + damp*dHdt
 ```
-The [`diffusion_1D_damp.jl`](scripts/diffusion_1D_damp.jl) code implements a damped iterative implicit solution of eq. (1). The iteration count drops to `niter~700`. This pseudo-transient approach enables fast as the iteration count scales close to _O(N)_ and not _O(N^2)_.
+The [`diffusion_2D_damp.jl`](scripts/diffusion_2D_damp.jl) code implements a damped iterative implicit solution of eq. (1). The iteration count drops to `niter~700`. This second order pseudo-transient approach enables fast as the iteration count scales close to _O(N)_ and not _O(N^2)_.
 
 ![](docs/diffusion_damp.png)
 
-#### Performance considerations
+### Performance considerations
 Performance evaluation is a complex topic as different metrics would lead to different conclusions. Ultimately, efficient algorithms should minimise the time to solution. For iterative algorithms this means:
-1) Ensure fast iterations (minimise the time per iteration).
+1) Ensure fast iterations, maximise the memory bandwidth usage (minimise the time per iteration).
 2) Keep the iteration count as low as possible and, in particular, that iteration count scales aroung _O(n)_ with the numerical resolution _n_.
 
-We will here report (1) for various implementations on various computer architectures.
+ ⚠️ TO DO add T_eff definition
 
 ⤴️ [_back to course material_](#short-course-material)
 
 
-## Part 2 - solving ice flow PDEs on GPUs
+<!-- ## Part 2 - solving ice flow PDEs on GPUs
 
 ### SIA equation applied to the Greenland Ice Sheet
 Let's move from the simple **1D linear diffusion** example to the shallow ice approximation (SIA) equation, a **2D nonlinear diffusion** equation for ice thickness _H_:
