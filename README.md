@@ -5,10 +5,11 @@
 **[JuliaCon 2021 workshop | Fri, July 23, 10am-1pm ET (16:00-19:00 CEST)](https://pretalx.com/juliacon2021/featured/)**
 
 👉 **Organisation notes:**
-- 💡 The short course material (available on this repository) **was just updated - fetch the latest versions!**
-- 👉 **Make sure to go through [Getting started](docs/getting-started.md) before the start of the course.**
+- 💡 The workshop material (available on this repository) **was just updated - fetch the latest versions!**
+- 👉 **Make sure to go through [Getting started](docs/getting-started.md) before the start of the workshop.**
 - Further interests in solving PDEs with Julia on GPUs❓
     - Check out this [online geo-HPC tutorial](https://github.com/luraess/geo-hpc-course)
+    - Visit [EGU21's short course repo](https://github.com/luraess/julia-parallel-course-EGU21)
 
 ---
 
@@ -17,21 +18,21 @@ This workshop covers trendy areas in modern numerical computing with examples fr
 # Content
 * [Objectives](#objectives)
 * [About this repository](#about-this-repository)
-* [Getting started](#getting-started) _(not part of the live course)_
+* [Getting started](#getting-started) _(not discussed during the workshop)_
 * 👉 [Short course material](#short-course-material)
-* [Extras](#extras) _(not part of the live course)_
+* [Extras](#extras) _(optional if time permits)_
 * [Further reading](#further-reading)
 
 
 # Objectives
-The goal of this workshop is to offer an interactive hands-on to solve systems of differential equations in parallel on GPUs using the [ParallelStencil.jl] and [ImplicitGlobalGrid.jl] Julia modules. [ParallelStencil.jl] permits to write architecture-agnostic parallel high-performance GPU and CPU code and [ImplicitGlobalGrid.jl] renders stencil-based distributed parallelization almost trivial. The resulting codes are fast, short and readable \[[1][JuliaCon20a], [2][JuliaCon20b], [3][JuliaCon19]\].
+The goal of this workshop is to offer an interactive hands-on to solve systems of differential equations in parallel on GPUs using the [ParallelStencil.jl] and [ImplicitGlobalGrid.jl] Julia packages. [ParallelStencil.jl] permits to write architecture-agnostic parallel high-performance GPU and CPU code and [ImplicitGlobalGrid.jl] renders stencil-based distributed parallelization almost trivial. The resulting codes are fast, short and readable \[[1][JuliaCon20a], [2][JuliaCon20b], [3][JuliaCon19]\].
 
-We will use these two Julia modules to design and implement a GPU application that predicts ice flow dynamics over mountainous topography (Greenland - e.g. Fig. below). We will discretise the shallow ice approximation (SIA) equations in our ice flow solver to assess Greenland's ice cap evolution as function of a climate scenario.
+We will use these two Julia packages to design and implement a nonlinear diffusion GPU solver. We will, in a second step, turn the GPU solver into an application that predicts ice flow dynamics over mountainous Greenland topography (Fig. below). We will discretise the shallow ice approximation (SIA) equations in our ice flow solver to assess Greenland's ice cap evolution as function of a climate scenario.
 
 ![Greenland ice cap](docs/greenland_1.png)
 
 **The workshop consists of 2 parts:**
-1. [**Part 1**](#part-1---julia-and-iterative-solvers) - You will learn about parallel and distributed computing and iterative solvers.
+1. [**Part 1**](#part-1---gpu-computing-and-iterative-solvers) - You will learn about parallel and distributed computing on GPUs and iterative solvers.
 2. [**Part 2**](#part-2---solving-ice-flow-pdes-on-gpus) - You will implement a GPU parallel PDE solver to predict ice flow dynamics on real topography.
 
 By the end of this workshop, you will:
@@ -46,34 +47,122 @@ By the end of this workshop, you will:
 ⤴️ [_back to content_](#content)
 
 
-<!-- ######################################################################### HERE -->
-
-<!-- # About this repository
+# About this repository
 The course repository lists following folders and items:
 - the [data](data) folder contains various low resolution Greenland input data (bedrock topography, surface elevation, ice thickness, masks, ...) downscaled from [BedMachine Greenland v3] - note the filenames include grid resolution information `(nx, ny)`;
 - the [docs](docs) folder contains documentation linked in the [README](README.md);
-- the various _output_ folder will contain the codes output, mainly figures in png format;
+- the various _output_ folder will contain the codes output, mainly figures in `png` format;
 - the [scripts](scripts) folder contains the scripts this course is about 🎉
 - the [extras](extras) folder contains supporting course material (not discussed live during the course);
-- the [`Project.toml`](Project.toml) file is a Julia project file, tracking the used packages and enabling a reproducible environment.
+- the [`Project.toml`](Project.toml) file is the Julia project file, tracking the used packages and enabling a reproducible environment.
 
-> 👉 This repository is an interactive and dynamic source of information related to the short course.
->- Check out the [**Discussion**](https://github.com/luraess/julia-parallel-course-EGU21/discussions) tab if you have general comments, ideas to share or for Q&A.
->- File an [**Issue**](https://github.com/luraess/julia-parallel-course-EGU21/issues) if you encounter any technical problems with the distributed codes.
+> 👉 This repository is an interactive and dynamic source of information related to the workshop.
+>- Check out the [**Discussion**](https://github.com/luraess/parallel-gpu-workshop-JuliaCon21/discussions) tab if you have general comments, ideas to share or for Q&A.
+>- File an [**Issue**](https://github.com/luraess/parallel-gpu-workshop-JuliaCon21/issues) if you encounter any technical problems with the distributed codes.
 >- Interact in a open-minded, respectful and inclusive manner.
 
 ⤴️ [_back to content_](#content)
 
 # Getting started
-> ⚠️ Due to the time limitation, the short course will not cover the [Getting started](docs/getting-started.md) steps. These are meant to provide directions to the participant willing to actively try out the examples during the short course. **It is warmly recommended to perform the [Getting started](docs/getting-started.md) steps before the beginning of the workshop.**
+> ⚠️ The workshop will not cover the Getting started steps. These are meant to provide directions to the participant willing to actively try out the examples during the workshop or for Julia newcomers. **It is warmly recommended to perform the [Getting started](docs/getting-started.md) steps before the beginning of the workshop.**
 
-**Please follow the detailed steps in**: [docs/getting-started.md](docs/getting-started.md)
-
-The [provided directions](docs/getting-started.md) will get you started with:
+The detailed steps in the dropdown hereafter will get you started with:
 1. Installing Julia v1.6
 2. Running the scripts from the course repository.
 
+<details>
+<summary>CLICK HERE for the 🚀 getting started steps 🚀</summary>
+<br>
+
+## Installing Julia v1.6 (or later)
+Check you have an active internet connexion and [download Julia v1.6](https://julialang.org/downloads/) for your platform following the install directions provided under **\[help\]** if needed.
+
+Alternatively, open a terminal and download the binaries (select the one for your platform):
+```sh
+wget https://julialang-s3.julialang.org/bin/winnt/x64/1.6/julia-1.6.1-win64.exe # Windows
+wget https://julialang-s3.julialang.org/bin/mac/x64/1.6/julia-1.6.1-mac64.dmg # macOS
+wget https://julialang-s3.julialang.org/bin/linux/x64/1.6/julia-1.6.1-linux-x86_64.tar.gz # Linux x86
+```
+Then add Julia to `PATH` (usually done in your `.bashrc`, `.profile`, or `config` file).
+
+### Terminal + external editor
+Ensure you have a text editor with syntax highlighting support for Julia. From within the terminal, type
+```sh
+julia
+```
+to make sure that the Julia REPL (aka terminal) starts.  Exit with `Ctrl-d`.
+
+### VS Code
+If you'd enjoy a more IDE type of environment, [check out VS Code](https://code.visualstudio.com). Follow the [installation directions](https://github.com/julia-vscode/julia-vscode#getting-started) for the [Julia VS Code extension](https://www.julia-vscode.org).
+
+## Running the scripts
+To get started with the course,
+1. clone (or download the ZIP archive) the course repository ([help here](https://docs.github.com/en/github/creating-cloning-and-archiving-repositories/cloning-a-repository))
+```sh
+git clone https://github.com/luraess/parallel-gpu-workshop-JuliaCon21.git
+```
+2. Navigate to `parallel-gpu-workshop-JuliaCon21`
+```sh
+cd parallel-gpu-workshop-JuliaCon21
+```
+3. From the terminal, launch Julia with the `--project` flag to read-in project environment related informations such as used packages
+```sh
+julia --project
+```
+3. From VS Code, follow the [instructions from the documentation](https://www.julia-vscode.org/docs/stable/gettingstarted/) to get started.
+
+### Packages installation
+
+Now that you launched Julia, you should be in the [Julia REPL]. You need to ensure all the packages you need to be installed before using them. To do so, enter the [Pkg mode](https://docs.julialang.org/en/v1/stdlib/REPL/#Pkg-mode) by typing `]`. Then, `instantiate` the project which should trigger the download of the packages (`st` lists the package status). Exit the Pkg mode with `Ctrl-c`:
+```julia-repl
+julia> ]
+
+(parallel-gpu-workshop-JuliaCon21) pkg> st
+Status `~/parallel-gpu-workshop-JuliaCon21/Project.toml`
+    # [...]
+
+(parallel-gpu-workshop-JuliaCon21) pkg> instantiate
+   Updating registry at `~/.julia/registries/General`
+   Updating git-repo `https://github.com/JuliaRegistries/General.git`
+   # [...]
+
+julia>
+```
+To test your install, go to the [scripts](../scripts) folder and run the [`iceflow.jl`](../scripts/iceflow.jl) code. You can execute shell commands from within the [Julia REPL] first typing `;`:
+```julia-repl
+julia> ;
+
+shell> cd scripts/
+
+julia> include("iceflow.jl")
+```
+Running this the first time will (pre-)complie the various installed packages and will take some time. Subsequent runs, by executing `include("iceflow.jl")`, should take around 10s.
+
+You should then see two figures saved in a newly created **_output_** folder, the second being the comparison between modelled and observed ice thickness distribution over Greenland:
+
+![Greenland ice cap](iceflow_out2.png)
+
+## Multi-threading on CPUs
+On the CPU, multi-threading is made accessible via [Base.Threads]. To make use of threads, Julia needs to be launched with
+```
+julia --project -t auto
+```
+which will launch Julia with as many threads are there are cores on your machine (including hyper-threaded cores).  Alternatively set
+the environment variable [JULIA_NUM_THREADS], e.g. `export JULIA_NUM_THREADS=2` to enable 2 threads.
+
+## Running on GPUs
+The [CUDA.jl] module permits to launch compute kernels on Nvidia GPUs natively from within [Julia]. [JuliaGPU] provides further reading and [introductory material](https://juliagpu.gitlab.io/CUDA.jl/tutorials/introduction/) about GPU ecosystems within Julia. If you have an Nvidia CUDA capable GPU device, also export following environment vaiable prior to installing the [CUDA.jl] package:
+```sh
+export JULIA_CUDA_USE_BINARYBUILDER=false
+```
+We will use the GPU acceleration in the [second part](https://github.com/luraess/julia-parallel-course-EGU21#gpu-sia-implementation) of the course.
+
+<br>
+</details>
+<br>
+
 > 👉 **Note: This course was developed and tested on Julia v1.6. It should work with any Julia version ≥v1.6**. The install configuration were tested on a MacBook Pro running macOS 10.15.7, a Linux GPU server running Ubuntu 20.04 LTS and a Linux GPU server running CentOS 8.
+
 
 # Short course material
 This section lists the material discussed within this 60 min. short course:
@@ -93,7 +182,7 @@ This section lists the material discussed within this 60 min. short course:
 ⤴️ [_back to content_](#content)
 
 
-## Part 1 - Julia and iterative solvers
+<!-- ## Part 1 - Julia and iterative solvers
 
 ### Why Julia
 _by Mauro Werder_
