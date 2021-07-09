@@ -29,9 +29,8 @@ if !@isdefined do_visu; do_visu = true end
     dHdtau = zeros(nx-2, ny-2) # normal grid, without boundary points
     dtau   = zeros(nx-2, ny-2) # normal grid, without boundary points
     # Initial condition
-    H0     = exp.(.-(xc.-lx/2).^2 .-(yc.-ly/2)'.^2)
-    Hold   = copy(H0)
-    H      = copy(H0)
+    H      = exp.(.-(xc.-lx/2).^2 .-(yc.-ly/2)'.^2)
+    Hold   = copy(H)
     t = 0.0; it = 0; ittot = 0
     # Physical time loop
     while t<ttot
@@ -57,10 +56,10 @@ if !@isdefined do_visu; do_visu = true end
         opts = (aspect_ratio=1, yaxis=font(fontsize, "Courier"), xaxis=font(fontsize, "Courier"),
                 ticks=nothing, framestyle=:box, titlefontsize=fontsize, titlefont="Courier", colorbar_title="",
                 xlabel="Lx", ylabel="Ly", xlims=(xc[1],xc[end]), ylims=(yc[1],yc[end]), clims=(0.,1.))
-        display(heatmap(xc, yc, H; c=:davos, title="damped diffusion (nt=$it, iters=$ittot)", opts...))
+        display(heatmap(xc, yc, H'; c=:davos, title="damped diffusion (nt=$it, iters=$ittot)", opts...))
         if save_fig savefig("diff2D_damp.png") end
     end
-    return xc, yc, H0, H
+    return xc, yc, H
 end
 
 @time diffusion_2D_damp(; do_visu=do_visu);

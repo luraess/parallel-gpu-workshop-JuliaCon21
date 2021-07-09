@@ -23,8 +23,7 @@ if !@isdefined do_visu; do_visu = true end
     qHy    = zeros(nx-2, ny-1) # on staggered grid
     dHdt   = zeros(nx-2, ny-2) # normal grid, without boundary points
     # Initial condition
-    H0     = exp.(.-(xc.-lx/2).^2 .-(yc.-ly/2)'.^2)
-    H      = copy(H0)
+    H      = exp.(.-(xc.-lx/2).^2 .-(yc.-ly/2)'.^2)
     dt     = minimum(min(dx, dy)^2 ./inn(H).^npow./4.1)  # time step (obeys ~CFL condition)
     t = 0.0; it = 0
     # Physical time loop
@@ -42,10 +41,10 @@ if !@isdefined do_visu; do_visu = true end
         opts = (aspect_ratio=1, yaxis=font(fontsize, "Courier"), xaxis=font(fontsize, "Courier"),
                 ticks=nothing, framestyle=:box, titlefontsize=fontsize, titlefont="Courier", colorbar_title="",
                 xlabel="Lx", ylabel="Ly", xlims=(xc[1],xc[end]), ylims=(yc[1],yc[end]), clims=(0.,1.))
-        display(heatmap(xc, yc, H; c=:davos, title="explicit diffusion (nt=$it)", opts...))
+        display(heatmap(xc, yc, H'; c=:davos, title="explicit diffusion (nt=$it)", opts...))
         if save_fig savefig("diff2D_expl.png") end
     end
-    return xc, yc, H0, H
+    return xc, yc, H
 end
 
 diffusion_2D_expl(; do_visu=do_visu);
