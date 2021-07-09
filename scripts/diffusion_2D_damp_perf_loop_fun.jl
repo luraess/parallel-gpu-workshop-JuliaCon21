@@ -8,28 +8,28 @@ macro qHx(ix,iy)  esc(:( -(0.5*(H[$ix,$iy+1]+H[$ix+1,$iy+1]))*(0.5*(H[$ix,$iy+1]
 macro qHy(ix,iy)  esc(:( -(0.5*(H[$ix+1,$iy]+H[$ix+1,$iy+1]))*(0.5*(H[$ix+1,$iy]+H[$ix+1,$iy+1]))*(0.5*(H[$ix+1,$iy]+H[$ix+1,$iy+1])) * (H[$ix+1,$iy+1]-H[$ix+1,$iy])*_dy )) end
 macro dtau(ix,iy) esc(:(  (1.0/(min_dxy2 / (H[$ix+1,$iy+1]*H[$ix+1,$iy+1]*H[$ix+1,$iy+1]) / 4.1) + _dt)^-1  )) end
 
-function compute_update!(H2, dHdtau, H, Hold, _dt, damp, min_dxy2, nx, ny, _dx, _dy)
-    @tturbo for iy=1:ny-2
-    # for iy=1:ny-2
-        for ix=1:nx-2
+function compute_update!(H2, dHdtau, H, Hold, _dt, damp, min_dxy2, _dx, _dy)
+    @tturbo for iy=1:size(dHdtau,2)
+    # for iy=1:size(dHdtau,2)
+        for ix=1:size(dHdtau,1)
             dHdtau[ix,iy] = -(H[ix+1, iy+1] - Hold[ix+1, iy+1])*_dt + 
                              (-(@qHx(ix+1,iy)-@qHx(ix,iy))*_dx -(@qHy(ix,iy+1)-@qHy(ix,iy))*_dy) +
                              damp*dHdtau[ix,iy]                        # damped rate of change
         end
     end
-    @tturbo for iy=1:ny-2
-    # for iy=1:ny-2
-        for ix=1:nx-2
+    @tturbo for iy=1:size(dHdtau,2)
+    # for iy=1:size(dHdtau,2)
+        for ix=1:size(dHdtau,1)
             H2[ix+1,iy+1] = H[ix+1,iy+1] + @dtau(ix,iy)*dHdtau[ix,iy]  # update rule, sets the BC as H[1]=H[end]=0
         end
     end
     return
 end
 
-function compute_residual!(ResH, H, Hold, _dt, nx, ny, _dx, _dy)
-    @tturbo for iy=1:ny-2
-    # for iy=1:ny-2
-        for ix=1:nx-2
+function compute_residual!(ResH, H, Hold, _dt, _dx, _dy)
+    @tturbo for iy=1:size(ResH,2)
+    # for iy=1:size(ResH,2)
+        for ix=1:size(ResH,1)
             ResH[ix,iy] = -(H[ix+1, iy+1] - Hold[ix+1, iy+1])*_dt + 
                            (-(@qHx(ix+1,iy)-@qHx(ix,iy))*_dx -(@qHy(ix,iy+1)-@qHy(ix,iy))*_dy)
         end
@@ -37,10 +37,10 @@ function compute_residual!(ResH, H, Hold, _dt, nx, ny, _dx, _dy)
     return
 end
 
-function assign!(Hold, H, nx, ny)
-    @tturbo for iy=1:ny
-    # for iy=1:ny
-        for ix=1:nx
+function assign!(Hold, H)
+    @tturbo for iy=1:size(H,2)
+    # for iy=1:size(H,2)
+        for ix=1:size(H,1)
             Hold[ix,iy] = H[ix,iy]
         end
     end
@@ -70,27 +70,27 @@ end
     H2     = copy(H)
     _dx, _dy, _dt = 1.0/dx, 1.0/dy, 1.0/dt
     min_dxy2 = min(dx,dy)^2
-    t = 0.0; it = 0; ittot = 0; t_tic = 0.0
+    t = 0.0; it = 0; ittot = 0; t_tic = 0.0; niter = 0
     # Physical time loop
     while t<ttot
         iter = 0; err = 2*tol
         # Picard-type iteration
         while err>tol && iter<itMax
-            if (it==0 && iter==10) t_tic = Base.time(); ittot = 0 end
-            compute_update!(H2, dHdtau, H, Hold, _dt, damp, min_dxy2, nx, ny, _dx, _dy)
+            if (it==1) t_tic = Base.time(); niter = 0 end
+            compute_update!(H2, dHdtau, H, Hold, _dt, damp, min_dxy2, _dx, _dy)
             H, H2 = H2, H  # pointer swap
             if iter % nout == 0
-                compute_residual!(ResH, H, Hold, _dt, nx, ny, _dx, _dy)
+                compute_residual!(ResH, H, Hold, _dt, _dx, _dy)
                 err = norm(ResH)/length(ResH)
             end
-            iter += 1
+            iter += 1; niter += 1
         end
         ittot += iter; it += 1; t += dt
-        assign!(Hold, H, nx, ny)
+        assign!(Hold, H)
     end
     t_toc = Base.time() - t_tic
     A_eff = (2*2+1)/1e9*nx*ny*sizeof(Float64)  # Effective main memory access per iteration [GB]
-    t_it  = t_toc/(ittot)                      # Execution time per iteration [s]
+    t_it  = t_toc/niter                        # Execution time per iteration [s]
     T_eff = A_eff/t_it                         # Effective memory throughput [GB/s]
     @printf("Time = %1.3f sec, T_eff = %1.2f GB/s (iterTot = %d)\n", t_toc, round(T_eff, sigdigits=2), ittot)
     # Visualize

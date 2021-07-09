@@ -8,28 +8,28 @@ macro qHx(ix,iy)  esc(:( -(0.5*(H[$ix,$iy+1]+H[$ix+1,$iy+1]))*(0.5*(H[$ix,$iy+1]
 macro qHy(ix,iy)  esc(:( -(0.5*(H[$ix+1,$iy]+H[$ix+1,$iy+1]))*(0.5*(H[$ix+1,$iy]+H[$ix+1,$iy+1]))*(0.5*(H[$ix+1,$iy]+H[$ix+1,$iy+1])) * (H[$ix+1,$iy+1]-H[$ix+1,$iy])*_dy )) end
 macro dtau(ix,iy) esc(:(  (1.0/(min_dxy2 / (H[$ix+1,$iy+1]*H[$ix+1,$iy+1]*H[$ix+1,$iy+1]) / 4.1) + _dt)^-1  )) end
 
-function compute_update!(H2, dHdtau, H, Hold, _dt, damp, min_dxy2, nx, ny, _dx, _dy)
+function compute_update!(H2, dHdtau, H, Hold, _dt, damp, min_dxy2, _dx, _dy)
     ix = (blockIdx().x-1) * blockDim().x + threadIdx().x
     iy = (blockIdx().y-1) * blockDim().y + threadIdx().y
-    if (ix<=nx-2 && iy<=ny-2) dHdtau[ix,iy] = -(H[ix+1, iy+1] - Hold[ix+1, iy+1])*_dt + 
-                                               (-(@qHx(ix+1,iy)-@qHx(ix,iy))*_dx -(@qHy(ix,iy+1)-@qHy(ix,iy))*_dy) +
-                                               damp*dHdtau[ix,iy] end                       # damped rate of change
-    if (ix<=nx-2 && iy<=ny-2) H2[ix+1,iy+1] = H[ix+1,iy+1] + @dtau(ix,iy)*dHdtau[ix,iy] end # update rule, sets the BC as H[1]=H[end]=0
+    if  (ix<=size(dHdtau,1) && iy<=size(dHdtau,2)) dHdtau[ix,iy] = -(H[ix+1, iy+1] - Hold[ix+1, iy+1])*_dt + 
+                                                                    (-(@qHx(ix+1,iy)-@qHx(ix,iy))*_dx -(@qHy(ix,iy+1)-@qHy(ix,iy))*_dy) +
+                                                                    damp*dHdtau[ix,iy] end                       # damped rate of change
+    if  (ix<=size(dHdtau,1) && iy<=size(dHdtau,2)) H2[ix+1,iy+1] = H[ix+1,iy+1] + @dtau(ix,iy)*dHdtau[ix,iy] end # update rule, sets the BC as H[1]=H[end]=0
     return
 end
 
-function compute_residual!(ResH, H, Hold, _dt, nx, ny, _dx, _dy)
+function compute_residual!(ResH, H, Hold, _dt, _dx, _dy)
     ix = (blockIdx().x-1) * blockDim().x + threadIdx().x
     iy = (blockIdx().y-1) * blockDim().y + threadIdx().y
-    if (ix<=nx-2 && iy<=ny-2) ResH[ix,iy] = -(H[ix+1, iy+1] - Hold[ix+1, iy+1])*_dt + 
-                                             (-(@qHx(ix+1,iy)-@qHx(ix,iy))*_dx -(@qHy(ix,iy+1)-@qHy(ix,iy))*_dy) end
+    if (ix<=size(ResH,1) && iy<=size(ResH,2)) ResH[ix,iy] = -(H[ix+1, iy+1] - Hold[ix+1, iy+1])*_dt + 
+                                                             (-(@qHx(ix+1,iy)-@qHx(ix,iy))*_dx -(@qHy(ix,iy+1)-@qHy(ix,iy))*_dy) end
     return
 end
 
-function assign!(Hold, H, nx, ny)
+function assign!(Hold, H)
     ix = (blockIdx().x-1) * blockDim().x + threadIdx().x
     iy = (blockIdx().y-1) * blockDim().y + threadIdx().y
-    if (ix<=nx && iy<=ny) Hold[ix,iy] = H[ix,iy] end
+    if (ix<=size(H,1) && iy<=size(H,2)) Hold[ix,iy] = H[ix,iy] end
     return
 end 
 
@@ -39,10 +39,10 @@ end
     ttot   = 1.0          # total simulation time
     dt     = 0.2          # physical time step
     # Numerics
-    BLOCKX = 16
-    BLOCKY = 16
-    GRIDX  = 32*8
-    GRIDY  = 32*8
+    BLOCKX = 32
+    BLOCKY = 8
+    GRIDX  = 16*8
+    GRIDY  = 32*16
     nx, ny = BLOCKX*GRIDX, BLOCKY*GRIDY # numerical grid resolution
     nout   = 100          # check error every nout
     tol    = 1e-6         # tolerance
@@ -62,30 +62,30 @@ end
     cublocks  = (GRIDX,  GRIDY,  1)
     _dx, _dy, _dt = 1.0/dx, 1.0/dy, 1.0/dt
     min_dxy2  = min(dx,dy)^2
-    t = 0.0; it = 0; ittot = 0; t_tic = 0.0
+    t = 0.0; it = 0; ittot = 0; t_tic = 0.0; niter = 0
     # Physical time loop
     while t<ttot
         iter = 0; err = 2*tol
         # Picard-type iteration
         while err>tol && iter<itMax
-            if (it==0 && iter==10) t_tic = Base.time(); ittot = 0 end
-            @cuda blocks=cublocks threads=cuthreads compute_update!(H2, dHdtau, H, Hold, _dt, damp, min_dxy2, nx, ny, _dx, _dy)
+            if (it==1) t_tic = Base.time(); niter = 0 end
+            @cuda blocks=cublocks threads=cuthreads compute_update!(H2, dHdtau, H, Hold, _dt, damp, min_dxy2, _dx, _dy)
             synchronize()
             H, H2 = H2, H
             if iter % nout == 0
-                @cuda blocks=cublocks threads=cuthreads compute_residual!(ResH, H, Hold, _dt, nx, ny, _dx, _dy)
+                @cuda blocks=cublocks threads=cuthreads compute_residual!(ResH, H, Hold, _dt, _dx, _dy)
                 synchronize()
                 err = norm(ResH)/length(ResH)
             end
-            iter += 1
+            iter += 1; niter += 1
         end
         ittot += iter; it += 1; t += dt
-        @cuda blocks=cublocks threads=cuthreads assign!(Hold, H, nx, ny)
+        @cuda blocks=cublocks threads=cuthreads assign!(Hold, H)
         synchronize()
     end
     t_toc = Base.time() - t_tic
     A_eff = (2*2+1)/1e9*nx*ny*sizeof(Float64)  # Effective main memory access per iteration [GB]
-    t_it  = t_toc/(ittot)                      # Execution time per iteration [s]
+    t_it  = t_toc/niter                        # Execution time per iteration [s]
     T_eff = A_eff/t_it                         # Effective memory throughput [GB/s]
     @printf("Time = %1.3f sec, T_eff = %1.2f GB/s (iterTot = %d)\n", t_toc, round(T_eff, sigdigits=2), ittot)
     # Visualize

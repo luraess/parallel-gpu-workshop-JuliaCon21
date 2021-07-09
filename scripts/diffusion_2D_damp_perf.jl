@@ -36,13 +36,13 @@ macro dtau() esc(:( (1.0./(min(dx, dy)^2 ./inn(H).^npow./4.1) .+ 1.0/dt).^-1  ))
     H      = exp.(.-(xc.-lx/2).^2 .-(yc.-ly/2)'.^2)
     Hold   = copy(H)
     H2     = copy(H)
-    t = 0.0; it = 0; ittot = 0; t_tic = 0.0
+    t = 0.0; it = 0; ittot = 0; t_tic = 0.0; niter = 0
     # Physical time loop
     while t<ttot
         iter = 0; err = 2*tol
         # Picard-type iteration
         while err>tol && iter<itMax
-            if (it==0 && iter==10) t_tic = Base.time(); ittot = 0 end
+            if (it==1) t_tic = Base.time(); niter = 0 end
             dHdtau .= -(inn(H) - inn(Hold))/dt + 
                        (-LazyArrays.Diff(@qHx(), dims=1)/dx -LazyArrays.Diff(@qHy(), dims=2)/dy) +
                        damp*dHdtau                              # damped rate of change
@@ -53,14 +53,14 @@ macro dtau() esc(:( (1.0./(min(dx, dy)^2 ./inn(H).^npow./4.1) .+ 1.0/dt).^-1  ))
                           (-LazyArrays.Diff(@qHx(), dims=1)/dx -LazyArrays.Diff(@qHy(), dims=2)/dy)  # residual of the PDE
                 err = norm(ResH)/length(ResH)
             end
-            iter += 1
+            iter += 1; niter += 1
         end
         ittot += iter; it += 1; t += dt
         Hold .= H
     end
     t_toc = Base.time() - t_tic
     A_eff = (2*2+1)/1e9*nx*ny*sizeof(Float64)  # Effective main memory access per iteration [GB]
-    t_it  = t_toc/(ittot)                      # Execution time per iteration [s]
+    t_it  = t_toc/niter                        # Execution time per iteration [s]
     T_eff = A_eff/t_it                         # Effective memory throughput [GB/s]
     @printf("Time = %1.3f sec, T_eff = %1.2f GB/s (iterTot = %d)\n", t_toc, round(T_eff, sigdigits=2), ittot)
     # Visualize

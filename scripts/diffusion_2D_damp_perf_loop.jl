@@ -30,47 +30,47 @@ macro dtau(ix,iy) esc(:(  (1.0/(min(dx,dy)^2 / H[$ix+1,$iy+1]^npow/4.1) + 1.0/dt
     H      = exp.(.-(xc.-lx/2).^2 .-(yc.-ly/2)'.^2)
     Hold   = copy(H)
     H2     = copy(H)
-    t = 0.0; it = 0; ittot = 0; t_tic = 0.0
+    t = 0.0; it = 0; ittot = 0; t_tic = 0.0; niter = 0
     # Physical time loop
     while t<ttot
         iter = 0; err = 2*tol
         # Picard-type iteration
         while err>tol && iter<itMax
-            if (it==0 && iter==10) t_tic = Base.time(); ittot = 0 end
-            for iy=1:ny-2
-                for ix=1:nx-2
+            if (it==1) t_tic = Base.time(); niter = 0 end
+            for iy=1:size(dHdtau,2)
+                for ix=1:size(dHdtau,1)
                     dHdtau[ix,iy] = -(H[ix+1, iy+1] - Hold[ix+1, iy+1])/dt + 
                                      (-(@qHx(ix+1,iy)-@qHx(ix,iy))/dx -(@qHy(ix,iy+1)-@qHy(ix,iy))/dy) +
                                      damp*dHdtau[ix,iy]                        # damped rate of change
                 end
             end
-            for iy=1:ny-2
-                for ix=1:nx-2
+            for iy=1:size(dHdtau,2)
+                for ix=1:size(dHdtau,1)
                     H2[ix+1,iy+1] = H[ix+1,iy+1] + @dtau(ix,iy)*dHdtau[ix,iy]  # update rule, sets the BC as H[1]=H[end]=0
                 end
             end
             H, H2 = H2, H  # pointer swap
             if iter % nout == 0
-                for iy=1:ny-2
-                    for ix=1:nx-2
+                for iy=1:size(ResH,2)
+                    for ix=1:size(ResH,1)
                     ResH[ix,iy] = -(H[ix+1, iy+1] - Hold[ix+1, iy+1])/dt + 
                                    (-(@qHx(ix+1,iy)-@qHx(ix,iy))/dx -(@qHy(ix,iy+1)-@qHy(ix,iy))/dy)
                     end
                 end
                 err = norm(ResH)/length(ResH)
             end
-            iter += 1
+            iter += 1; niter += 1
         end
         ittot += iter; it += 1; t += dt
-        for iy=1:ny
-            for ix=1:nx
+        for iy=1:size(H,2)
+            for ix=1:size(H,1)
                 Hold[ix,iy] = H[ix,iy]
             end
         end
     end
     t_toc = Base.time() - t_tic
     A_eff = (2*2+1)/1e9*nx*ny*sizeof(Float64)  # Effective main memory access per iteration [GB]
-    t_it  = t_toc/(ittot)                      # Execution time per iteration [s]
+    t_it  = t_toc/niter                        # Execution time per iteration [s]
     T_eff = A_eff/t_it                         # Effective memory throughput [GB/s]
     @printf("Time = %1.3f sec, T_eff = %1.2f GB/s (iterTot = %d)\n", t_toc, round(T_eff, sigdigits=2), ittot)
     # Visualize
