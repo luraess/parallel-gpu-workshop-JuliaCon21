@@ -218,7 +218,7 @@ For more info see https://docs.julialang.org.
 ### Diffusion equation
 Let's start with a 2D nonlinear diffusion example to implement both an explicit and iterative implicit PDE solver:
 
-dH/dt = ∇.(H^3 ∇H)
+  dH/dt = ∇.(H^3 ∇H)
 
 The diffusion of a quantity `H` over time `t` can be described as (1a, 1b) a diffusive flux, (1c) a flux balance and (1d) an update rule:
 ```md
@@ -313,6 +313,7 @@ H[2:end-1,2:end-1] .= inn(H) .+ dtau.*dHdtau              # update rule, sets th
 ```
 The first step is to modify this script in order to make it more suited for performance testing. In the resulting [`diffusion_2D_damp_perf.jl`](scripts/diffusion_2D_damp_perf.jl) we:
 - replace the non-necessary array allocation by macros
+- introduce H2 array to avoid race conditions
 - use non-allocating `diff` operators
 - add accurate timing of the main loop and `T_eff` reporting
 resulting in the following code:
@@ -323,21 +324,22 @@ macro qHx()  esc(:( -av_xi(H).^npow.*LazyArrays.Diff(H[:,2:end-1], dims=1)/dx ))
 macro qHy()  esc(:( -av_yi(H).^npow.*LazyArrays.Diff(H[2:end-1,:], dims=2)/dy )) end
 macro dtau() esc(:( (1.0./(min(dx, dy)^2 ./inn(H).^npow./4.1) .+ 1.0/dt).^-1  )) end
 # [...] skipped lines
-if (it==1 && iter==10) t_tic = Base.time(); ittot = 0 end
+if (it==0 && iter==10) t_tic = Base.time(); ittot = 0 end
 dHdtau .= -(inn(H) - inn(Hold))/dt + 
            (-LazyArrays.Diff(@qHx(), dims=1)/dx -LazyArrays.Diff(@qHy(), dims=2)/dy) +
            damp*dHdtau                              # damped rate of change
-H[2:end-1,2:end-1] .= inn(H) .+ @dtau().*dHdtau     # update rule, sets the BC as H[1]=H[end]=0
+H2[2:end-1,2:end-1] .= inn(H) .+ @dtau().*dHdtau    # update rule, sets the BC as H[1]=H[end]=0
+H, H2 = H2, H                                       # pointer swap
 # [...] skipped lines
 t_toc = Base.time() - t_tic
-A_eff = (2*2+2)/1e9*nx*ny*sizeof(Float64)  # Effective main memory access per iteration [GB]
+A_eff = (2*2+1)/1e9*nx*ny*sizeof(Float64)  # Effective main memory access per iteration [GB]
 t_it  = t_toc/(ittot)                      # Execution time per iteration [s]
 T_eff = A_eff/t_it                         # Effective memory throughput [GB/s]
 # [...] skipped lines
 ```
-Running [`diffusion_2D_damp_perf.jl`](scripts/diffusion_2D_damp_perf.jl) with `nx = ny = 256` produces following output on a Dual-Core Intel Core i7 processor (MBPro)
+Running [`diffusion_2D_damp_perf.jl`](scripts/diffusion_2D_damp_perf.jl) with `nx = ny = 512`, starting Julia with `-O3 --check-bounds=no` produces following output on an Intel Quad-Core i5-4460  CPU @3.20GHz processor
 ```julia-repl
-Time = 2.952 sec, T_eff = 0.43 GB/s (iterTot = 404)
+Time = 26.274 sec, T_eff = 0.40 GB/s (iterTot = 1005)
 ```
 
 ⤴️ [_back to workshop material_](#workshop-material)
@@ -359,55 +361,117 @@ for iy=1:ny-2
 end
 for iy=1:ny-2
     for ix=1:nx-2
-        H[ix+1,iy+1]  = H[ix+1,iy+1] + @dtau(ix,iy)*dHdtau[ix,iy]  # update rule, sets the BC as H[1]=H[end]=0
+        H2[ix+1,iy+1] = H[ix+1,iy+1] + @dtau(ix,iy)*dHdtau[ix,iy]  # update rule, sets the BC as H[1]=H[end]=0
     end
 end
+H, H2 = H2, H  # pointer swap
 # [...] skipped lines
 ```
 > 💡 Note that macros can now take `ix` and `iy` as arguments.
 
-Running [`diffusion_2D_damp_perf_loop.jl`](scripts/diffusion_2D_damp_perf_loop.jl) with `nx = ny = 256` produces following output:
+Running [`diffusion_2D_damp_perf_loop.jl`](scripts/diffusion_2D_damp_perf_loop.jl) with `nx = ny = 512` produces following output:
 ```julia-repl
-Time = 0.327 sec, T_eff = 3.90 GB/s (iterTot = 404)
+Time = 5.919 sec, T_eff = 1.80 GB/s (iterTot = 1005)
 ```
 
 The next step is to wrap these physics calculations into functions (later called kernels on the GPU) and define them before the main function of the script, resulting in the [`diffusion_2D_damp_perf_loop_fun.jl`](scripts/diffusion_2D_damp_perf_loop_fun.jl) code:
 ```julia
 using LoopVectorization
 # [...] skipped lines
-function compute_update!(H, dHdtau, Hold, npow, dt, damp, nx, ny, dx, dy)
+macro qHx(ix,iy)  esc(:( -(0.5*(H[$ix,$iy+1]+H[$ix+1,$iy+1]))*(0.5*(H[$ix,$iy+1]+H[$ix+1,$iy+1]))*(0.5*(H[$ix,$iy+1]+H[$ix+1,$iy+1])) * (H[$ix+1,$iy+1]-H[$ix,$iy+1])*_dx )) end
+macro qHy(ix,iy)  esc(:( -(0.5*(H[$ix+1,$iy]+H[$ix+1,$iy+1]))*(0.5*(H[$ix+1,$iy]+H[$ix+1,$iy+1]))*(0.5*(H[$ix+1,$iy]+H[$ix+1,$iy+1])) * (H[$ix+1,$iy+1]-H[$ix+1,$iy])*_dy )) end
+macro dtau(ix,iy) esc(:(  (1.0/(min_dxy2 / (H[$ix+1,$iy+1]*H[$ix+1,$iy+1]*H[$ix+1,$iy+1]) / 4.1) + _dt)^-1  )) end
+
+function compute_update!(H2, dHdtau, H, Hold, _dt, damp, min_dxy2, nx, ny, _dx, _dy)
     @tturbo for iy=1:ny-2
     # for iy=1:ny-2
         for ix=1:nx-2
-            dHdtau[ix,iy] = -(H[ix+1, iy+1] - Hold[ix+1, iy+1])/dt + 
-                             (-(@qHx(ix+1,iy)-@qHx(ix,iy))/dx -(@qHy(ix,iy+1)-@qHy(ix,iy))/dy) +
+            dHdtau[ix,iy] = -(H[ix+1, iy+1] - Hold[ix+1, iy+1])*_dt + 
+                             (-(@qHx(ix+1,iy)-@qHx(ix,iy))*_dx -(@qHy(ix,iy+1)-@qHy(ix,iy))*_dy) +
                              damp*dHdtau[ix,iy]                        # damped rate of change
         end
     end
     @tturbo for iy=1:ny-2
     # for iy=1:ny-2
         for ix=1:nx-2
-            H[ix+1,iy+1]  = H[ix+1,iy+1] + @dtau(ix,iy)*dHdtau[ix,iy]  # update rule, sets the BC as H[1]=H[end]=0
+            H2[ix+1,iy+1] = H[ix+1,iy+1] + @dtau(ix,iy)*dHdtau[ix,iy]  # update rule, sets the BC as H[1]=H[end]=0
         end
     end
     return
 end
 # [...] skipped lines
-compute_update!(H, dHdtau, Hold, npow, dt, damp, nx, ny, dx, dy)
+_dx, _dy, _dt = 1.0/dx, 1.0/dy, 1.0/dt
+min_dxy2 = min(dx,dy)^2
+compute_update!(H2, dHdtau, H, Hold, _dt, damp, min_dxy2, nx, ny, _dx, _dy)
 # [...] skipped lines
 ```
 > 💡 Note that the outer loop (over `iy`) can be vectorized using a powerful combination of multi-threading capabilities of the CPU and AVX instructions exposed by the LoopVectorzation package 🚀 - kudos.
 
-Running [`diffusion_2D_damp_perf_loop_fun.jl`](scripts/diffusion_2D_damp_perf_loop_fun.jl) with `nx = ny = 256` produces following output:
+Running [`diffusion_2D_damp_perf_loop_fun.jl`](scripts/diffusion_2D_damp_perf_loop_fun.jl) with `nx = ny = 512` produces following output:
 ```julia-repl
-Time = 0.046 sec, T_eff = 28.00 GB/s (iterTot = 404)
+Time = 0.441 sec, T_eff = 24.00 GB/s (iterTot = 1005)
 ```
-We are now ready to move to the GPU ! The last minor change would be to transform the bounds range now handled by the loop ranges in an `if` statement as in the [`diffusion_2D_damp_perf_loop_fun_gpustyle.jl`](extras/diffusion_2D_damp_perf_loop_fun_gpustyle.jl) code (note that this code does not deliver a comparable performance to [`diffusion_2D_damp_perf_loop_fun.jl`](scripts/diffusion_2D_damp_perf_loop_fun.jl) because `@tturbo` cannot handle the `if` statement).
+Since the performance increases and gets closer to hardware limit (memory copy values), some details start to become perfromance limiters, namely:
+- divisions instead of multiplications
+- arithmetic operation such as power `H^npow`
+
+These details will become even more important on the GPU.
+
+We are now ready to move to the GPU !
 
 ⤴️ [_back to workshop material_](#workshop-material)
 
 ### GPU implementation
-Transform the GPU style CPU version to GPU
+So now we have a cool iterative and implicit nonlinear diffusion solver in less than 100 lines of code 🎉. Good enough for mid-resolution calculations. What if we need higher resolution and faster time to solution ? GPU computing makes it possible to go beyond 24 GB/s. Let's slightly modify the [`diffusion_2D_damp_perf_loop_fun.jl`](scripts/diffusion_2D_damp_perf_loop_fun.jl) code to enable GPU execution.
+
+The main idea of GPU parallelisation is to calculate each grid point concurently by a different GPU thread (instaed of the more serial CPU execution) as depicted hereafter:
+
+![](docs/cpu_gpu.png)
+
+The main change is to replace the (multi-threaded) loops by a vectorised GPU index
+```julia
+ix = (blockIdx().x-1) * blockDim().x + threadIdx().x
+iy = (blockIdx().y-1) * blockDim().y + threadIdx().y
+```
+specific to GPU execution. Each `ix` and `iy` are then executed concurrently by a different GPU thread. Also, whether a grid point has to participate in the calculation or not can no longer be defined by the loop range, but needs to be handled locally to each thread by e.g. an `if`condition, resulting in the following [`diffusion_2D_damp_perf_gpu.jl`](scripts/diffusion_2D_damp_perf_gpu.jl) GPU code:
+```julia
+using CUDA
+# [...] skipped lines
+function compute_update!(H2, dHdtau, H, Hold, _dt, damp, min_dxy2, nx, ny, _dx, _dy)
+    ix = (blockIdx().x-1) * blockDim().x + threadIdx().x
+    iy = (blockIdx().y-1) * blockDim().y + threadIdx().y
+    if (ix<=nx-2 && iy<=ny-2) dHdtau[ix,iy] = -(H[ix+1, iy+1] - Hold[ix+1, iy+1])*_dt + 
+                                               (-(@qHx(ix+1,iy)-@qHx(ix,iy))*_dx -(@qHy(ix,iy+1)-@qHy(ix,iy))*_dy) +
+                                               damp*dHdtau[ix,iy] end                       # damped rate of change
+    if (ix<=nx-2 && iy<=ny-2) H2[ix+1,iy+1] = H[ix+1,iy+1] + @dtau(ix,iy)*dHdtau[ix,iy] end # update rule, sets the BC as H[1]=H[end]=0
+    return
+end
+# [...] skipped lines
+BLOCKX = 16
+BLOCKY = 16
+GRIDX  = 32*8
+GRIDY  = 32*8
+nx, ny = BLOCKX*GRIDX, BLOCKY*GRIDY # numerical grid resolution
+# [...] skipped lines
+ResH   = CUDA.zeros(nx-2, ny-2) # normal grid, without boundary points
+dHdtau = CUDA.zeros(nx-2, ny-2) # normal grid, without boundary points
+# [...] skipped lines
+H      = CuArray(exp.(.-(xc.-lx/2).^2 .-(yc.-ly/2)'.^2))
+# [...] skipped lines
+cuthreads = (BLOCKX, BLOCKY, 1)
+cublocks  = (GRIDX,  GRIDY,  1)
+# [...] skipped lines
+@cuda blocks=cublocks threads=cuthreads compute_update!(H2, dHdtau, H, Hold, _dt, damp, min_dxy2, nx, ny, _dx, _dy)
+synchronize()
+# [...] skipped lines
+```
+> 💡 We use `@cuda blocks=cublocks threads=cuthreads` to launch the GPU function on the appropriate number of threads, i.e. "parallel workers". The numerical grid resolution `nx` and `ny` must now be chosen accordingly to the number of parallel workers.
+
+Running `diffusion_2D_damp_perf_gpu.jl`](scripts/diffusion_2D_damp_perf_gpu.jl) with `nx = ny = 4096` produces following output:
+```julia-repl
+Time = 13.360 sec, T_eff = 140.00 GB/s (iterTot = 2705)
+```
+> 💡 Note that we need to run a higher resolution in order to saturate the GPU memory bandwith and get relevant performance measure.
 
 ⤴️ [_back to workshop material_](#workshop-material)
 
@@ -423,7 +487,7 @@ Move from CPU and GPU to XPU using [ParallelStencil.jl]
 <!-- ## Part 3 - Solving ice flow PDEs on GPUs
 
 ### SIA equation applied to the Greenland Ice Sheet
-Let's move from the simple **1D linear diffusion** example to the shallow ice approximation (SIA) equation, a **2D nonlinear diffusion** equation for ice thickness _H_:
+Let's move from the **2D nonlinear diffusion** example to the shallow ice approximation (SIA) equation, a **2D nonlinear diffusion** equation for ice thickness _H_:
 
   dH/dt = ∇.(D ∇S) + M
 
