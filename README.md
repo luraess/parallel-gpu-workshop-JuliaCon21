@@ -141,7 +141,7 @@ Running this the first time will (pre-)complie the various installed packages an
 
 You should then see two figures saved in a newly created **_output_** folder, the second being the comparison between modelled and observed ice thickness distribution over Greenland:
 
-![Greenland ice cap](iceflow_out2.png)
+![Greenland ice cap](docs/iceflow_out2.png)
 
 ## Multi-threading on CPUs
 On the CPU, multi-threading is made accessible via [Base.Threads]. To make use of threads, Julia needs to be launched with
@@ -481,6 +481,8 @@ So - that rocks 🚀
 ⤴️ [_back to workshop material_](#workshop-material)
 
 ### XPU implementation
+Let's do a rapid recap; So far we have two performant codes to solve the nonlinear and implicit diffusion equation
+
 Move from CPU and GPU to XPU using [ParallelStencil.jl]
 
 ⤴️ [_back to workshop material_](#workshop-material)
