@@ -467,7 +467,7 @@ synchronize()
 ```
 > 💡 We use `@cuda blocks=cublocks threads=cuthreads` to launch the GPU function on the appropriate number of threads, i.e. "parallel workers". The numerical grid resolution `nx` and `ny` must now be chosen accordingly to the number of parallel workers. Also, note that we need to run a higher resolution in order to saturate the GPU memory bandwith and get relevant performance measure.
 
-Running `diffusion_2D_damp_perf_gpu.jl`](scripts/diffusion_2D_damp_perf_gpu.jl) with `nx = ny = 4096`
+Running [`diffusion_2D_damp_perf_gpu.jl`](scripts/diffusion_2D_damp_perf_gpu.jl) with `nx = ny = 4096`
 - on an Nvidia Titan Xp (12GB) GPU produces following output:
   ```julia-repl
   Time = 6.285 sec, T_eff = 140.00 GB/s (iterTot = 2705)
@@ -481,9 +481,65 @@ So - that rocks 🚀
 ⤴️ [_back to workshop material_](#workshop-material)
 
 ### XPU implementation
-Let's do a rapid recap; So far we have two performant codes, one CPU-based, the other GPU-based, to solve the nonlinear and implicit diffusion equation in 2D. Wouldn't it be great to 
+Let's do a rapid recap; So far we have two performant codes, one CPU-based, the other GPU-based, to solve the nonlinear and implicit diffusion equation in 2D. Wouldn't it be great to have single code that enables both ? The answer is [ParallelStencil.jl] which enables a backend independent syntax implementating parallel stencil kernels to execute on XPUs. The [`diffusion_2D_damp_perf_xpu.jl`](scripts/diffusion_2D_damp_perf_xpu.jl) code uses [ParallelStencil.jl] to combine [`diffusion_2D_damp_perf_gpu.jl`](scripts/diffusion_2D_damp_perf_gpu.jl) and [`diffusion_2D_damp_perf_loop_fun.jl`](scripts/diffusion_2D_damp_perf_loop_fun.jl) into a single code. Backend can be chosen by the `USE_GPU` flag. Using the `parallel_indices` permits to avoid explicit flux calculations:
+```julia
+const USE_GPU = true
+using ParallelStencil
+using ParallelStencil.FiniteDifferences2D
+@static if USE_GPU
+    @init_parallel_stencil(CUDA, Float64, 2)
+else
+    @init_parallel_stencil(Threads, Float64, 2)
+end
+# [...] skipped lines
+@parallel_indices (ix,iy) function compute_update!(H2, dHdtau, H, Hold, _dt, damp, min_dxy2, _dx, _dy)
+    if (ix<=size(dHdtau,1) && iy<=size(dHdtau,2)) dHdtau[ix,iy] = -(H[ix+1, iy+1] - Hold[ix+1, iy+1])*_dt + 
+                                                                   (-(@qHx(ix+1,iy)-@qHx(ix,iy))*_dx -(@qHy(ix,iy+1)-@qHy(ix,iy))*_dy) +
+                                                                   damp*dHdtau[ix,iy] end                       # damped rate of change
+    if (ix<=size(dHdtau,1) && iy<=size(dHdtau,2)) H2[ix+1,iy+1] = H[ix+1,iy+1] + @dtau(ix,iy)*dHdtau[ix,iy] end # update rule, sets the BC as H[1]=H[end]=0
+    return
+end
+# [...] skipped lines
+@parallel compute_update!(H2, dHdtau, H, Hold, _dt, damp, min_dxy2, _dx, _dy)
+# [...] skipped lines
+```
+> 💡 Note that @tturbo is not yet implemented in the CPU backend of [ParallelStencil.jl], which now supports `Threads.@threads`.
 
-Move from CPU and GPU to XPU using [ParallelStencil.jl]
+Running [`diffusion_2D_damp_perf_xpu.jl`](scripts/diffusion_2D_damp_perf_xpu.jl) with `nx = ny = 4096`
+- on an Nvidia Titan Xp (12GB) GPU produces following output:
+  ```julia-repl
+  Time = 6.126 sec, T_eff = 140.00 GB/s (iterTot = 2705)
+  ```
+- on an Nvidia Tesla V100 PCIe (16GB) GPU produces following output:
+  ```julia-repl
+  Time = 1.803 sec, T_eff = 700.00 GB/s (iterTot = 2705)
+  ```
+
+The alternative and "default" implementation using [ParallelStencil.jl] would allow for using macros exposed by the `FiniteDifferences2D` module for a math-close notation in the kernels:
+```julia
+# [...] skipped lines
+@parallel function compute_flux!(qHx, qHy, H, _dx, _dy)
+    @all(qHx) = -@av_xi(H)*@av_xi(H)*@av_xi(H)*@d_xi(H)*_dx
+    @all(qHy) = -@av_yi(H)*@av_yi(H)*@av_yi(H)*@d_yi(H)*_dy
+    return
+end
+
+macro dtau() esc(:( (1.0/(min_dxy2 / (@inn(H)*@inn(H)*@inn(H)) / 4.1) + _dt)^-1 )) end
+@parallel function compute_update!(dHdtau, H, Hold, qHx, qHy, _dt, damp, min_dxy2, _dx, _dy)
+    @all(dHdtau) = -(@inn(H) - @inn(Hold))*_dt - @d_xa(qHx)*_dx - @d_ya(qHy)*_dy + damp*@all(dHdtau)
+    @inn(H)      =   @inn(H) + @dtau()*@all(dHdtau)
+    return
+end
+```
+Running [`diffusion_2D_damp_xpu.jl`](scripts/diffusion_2D_damp_xpu.jl) with `nx = ny = 4096`
+- on an Nvidia Titan Xp (12GB) GPU produces following output:
+  ```julia-repl
+  Time = 5.404 sec, T_eff = 160.00 GB/s (iterTot = 2705)
+  ```
+- on an Nvidia Tesla V100 PCIe (16GB) GPU produces following output:
+  ```julia-repl
+  Time = 3.713 sec, T_eff = 340.00 GB/s (iterTot = 2705)
+  ```
 
 ⤴️ [_back to workshop material_](#workshop-material)
 
