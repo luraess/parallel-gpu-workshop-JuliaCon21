@@ -317,15 +317,22 @@ The first step is to modify this script in order to make it more suited for perf
 - add accurate timing of the main loop and `T_eff` reporting
 resulting in the following code:
 ```julia
+using LazyArrays
 # [...] skipped lines
 macro qHx()  esc(:( -av_xi(H).^npow.*LazyArrays.Diff(H[:,2:end-1], dims=1)/dx )) end
 macro qHy()  esc(:( -av_yi(H).^npow.*LazyArrays.Diff(H[2:end-1,:], dims=2)/dy )) end
 macro dtau() esc(:( (1.0./(min(dx, dy)^2 ./inn(H).^npow./4.1) .+ 1.0/dt).^-1  )) end
 # [...] skipped lines
+if (it==1 && iter==10) t_tic = Base.time(); ittot = 0 end
 dHdtau .= -(inn(H) - inn(Hold))/dt + 
            (-LazyArrays.Diff(@qHx(), dims=1)/dx -LazyArrays.Diff(@qHy(), dims=2)/dy) +
            damp*dHdtau                              # damped rate of change
 H[2:end-1,2:end-1] .= inn(H) .+ @dtau().*dHdtau     # update rule, sets the BC as H[1]=H[end]=0
+# [...] skipped lines
+t_toc = Base.time() - t_tic
+A_eff = (2*2+2)/1e9*nx*ny*sizeof(Float64)  # Effective main memory access per iteration [GB]
+t_it  = t_toc/(ittot)                      # Execution time per iteration [s]
+T_eff = A_eff/t_it                         # Effective memory throughput [GB/s]
 # [...] skipped lines
 ```
 Running [`diffusion_2D_damp_perf.jl`](scripts/diffusion_2D_damp_perf.jl) with `nx = ny = 256` produces following output on a Dual-Core Intel Core i7 processor (MBPro)
