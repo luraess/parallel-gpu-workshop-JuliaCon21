@@ -465,13 +465,12 @@ cublocks  = (GRIDX,  GRIDY,  1)
 synchronize()
 # [...] skipped lines
 ```
-> 💡 We use `@cuda blocks=cublocks threads=cuthreads` to launch the GPU function on the appropriate number of threads, i.e. "parallel workers". The numerical grid resolution `nx` and `ny` must now be chosen accordingly to the number of parallel workers.
+> 💡 We use `@cuda blocks=cublocks threads=cuthreads` to launch the GPU function on the appropriate number of threads, i.e. "parallel workers". The numerical grid resolution `nx` and `ny` must now be chosen accordingly to the number of parallel workers. Also, note that we need to run a higher resolution in order to saturate the GPU memory bandwith and get relevant performance measure.
 
 Running `diffusion_2D_damp_perf_gpu.jl`](scripts/diffusion_2D_damp_perf_gpu.jl) with `nx = ny = 4096` produces following output:
 ```julia-repl
 Time = 13.360 sec, T_eff = 140.00 GB/s (iterTot = 2705)
 ```
-> 💡 Note that we need to run a higher resolution in order to saturate the GPU memory bandwith and get relevant performance measure.
 
 ⤴️ [_back to workshop material_](#workshop-material)
 
