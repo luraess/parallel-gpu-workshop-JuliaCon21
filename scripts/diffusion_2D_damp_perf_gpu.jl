@@ -1,4 +1,4 @@
-using LoopVectorization, Plots, Printf, LinearAlgebra
+using CUDA, Plots, Printf, LinearAlgebra
 
 # enable plotting by default
 if !@isdefined do_visu; do_visu = false end
@@ -9,43 +9,29 @@ macro qHy(ix,iy)  esc(:( -(0.5*(H[$ix+1,$iy]+H[$ix+1,$iy+1]))*(0.5*(H[$ix+1,$iy]
 macro dtau(ix,iy) esc(:(  (1.0/(min_dxy2 / (H[$ix+1,$iy+1]*H[$ix+1,$iy+1]*H[$ix+1,$iy+1]) / 4.1) + _dt)^-1  )) end
 
 function compute_update!(H2, dHdtau, H, Hold, _dt, damp, min_dxy2, nx, ny, _dx, _dy)
-    @tturbo for iy=1:ny-2
-    # for iy=1:ny-2
-        for ix=1:nx-2
-            dHdtau[ix,iy] = -(H[ix+1, iy+1] - Hold[ix+1, iy+1])*_dt + 
-                             (-(@qHx(ix+1,iy)-@qHx(ix,iy))*_dx -(@qHy(ix,iy+1)-@qHy(ix,iy))*_dy) +
-                             damp*dHdtau[ix,iy]                        # damped rate of change
-        end
-    end
-    @tturbo for iy=1:ny-2
-    # for iy=1:ny-2
-        for ix=1:nx-2
-            H2[ix+1,iy+1] = H[ix+1,iy+1] + @dtau(ix,iy)*dHdtau[ix,iy]  # update rule, sets the BC as H[1]=H[end]=0
-        end
-    end
+    ix = (blockIdx().x-1) * blockDim().x + threadIdx().x
+    iy = (blockIdx().y-1) * blockDim().y + threadIdx().y
+    if (ix<=nx-2 && iy<=ny-2) dHdtau[ix,iy] = -(H[ix+1, iy+1] - Hold[ix+1, iy+1])*_dt + 
+                                               (-(@qHx(ix+1,iy)-@qHx(ix,iy))*_dx -(@qHy(ix,iy+1)-@qHy(ix,iy))*_dy) +
+                                               damp*dHdtau[ix,iy] end                       # damped rate of change
+    if (ix<=nx-2 && iy<=ny-2) H2[ix+1,iy+1] = H[ix+1,iy+1] + @dtau(ix,iy)*dHdtau[ix,iy] end # update rule, sets the BC as H[1]=H[end]=0
     return
 end
 
 function compute_residual!(ResH, H, Hold, _dt, nx, ny, _dx, _dy)
-    @tturbo for iy=1:ny-2
-    # for iy=1:ny-2
-        for ix=1:nx-2
-            ResH[ix,iy] = -(H[ix+1, iy+1] - Hold[ix+1, iy+1])*_dt + 
-                           (-(@qHx(ix+1,iy)-@qHx(ix,iy))*_dx -(@qHy(ix,iy+1)-@qHy(ix,iy))*_dy)
-        end
-    end
+    ix = (blockIdx().x-1) * blockDim().x + threadIdx().x
+    iy = (blockIdx().y-1) * blockDim().y + threadIdx().y
+    if (ix<=nx-2 && iy<=ny-2) ResH[ix,iy] = -(H[ix+1, iy+1] - Hold[ix+1, iy+1])*_dt + 
+                                             (-(@qHx(ix+1,iy)-@qHx(ix,iy))*_dx -(@qHy(ix,iy+1)-@qHy(ix,iy))*_dy) end
     return
 end
 
 function assign!(Hold, H, nx, ny)
-    @tturbo for iy=1:ny
-    # for iy=1:ny
-        for ix=1:nx
-            Hold[ix,iy] = H[ix,iy]
-        end
-    end
+    ix = (blockIdx().x-1) * blockDim().x + threadIdx().x
+    iy = (blockIdx().y-1) * blockDim().y + threadIdx().y
+    if (ix<=nx && iy<=ny) Hold[ix,iy] = H[ix,iy] end
     return
-end
+end 
 
 @views function diffusion_2D_damp(; do_visu=true, save_fig=false)
     # Physics
@@ -53,7 +39,11 @@ end
     ttot   = 1.0          # total simulation time
     dt     = 0.2          # physical time step
     # Numerics
-    nx, ny = 512, 512     # numerical grid resolution
+    BLOCKX = 16
+    BLOCKY = 16
+    GRIDX  = 32*8
+    GRIDY  = 32*8
+    nx, ny = BLOCKX*GRIDX, BLOCKY*GRIDY # numerical grid resolution
     nout   = 100          # check error every nout
     tol    = 1e-6         # tolerance
     itMax  = 1e5          # max number of iterations
@@ -62,14 +52,16 @@ end
     dx, dy = lx/nx, ly/ny # grid size
     xc, yc = LinRange(dx/2, lx-dx/2, nx), LinRange(dy/2, ly-dy/2, ny)
     # Array allocation
-    ResH   = zeros(nx-2, ny-2) # normal grid, without boundary points
-    dHdtau = zeros(nx-2, ny-2) # normal grid, without boundary points
+    ResH   = CUDA.zeros(nx-2, ny-2) # normal grid, without boundary points
+    dHdtau = CUDA.zeros(nx-2, ny-2) # normal grid, without boundary points
     # Initial condition
-    H      = exp.(.-(xc.-lx/2).^2 .-(yc.-ly/2)'.^2)
+    H      = CuArray(exp.(.-(xc.-lx/2).^2 .-(yc.-ly/2)'.^2))
     Hold   = copy(H)
     H2     = copy(H)
+    cuthreads = (BLOCKX, BLOCKY, 1)
+    cublocks  = (GRIDX,  GRIDY,  1)
     _dx, _dy, _dt = 1.0/dx, 1.0/dy, 1.0/dt
-    min_dxy2 = min(dx,dy)^2
+    min_dxy2  = min(dx,dy)^2
     t = 0.0; it = 0; ittot = 0; t_tic = 0.0
     # Physical time loop
     while t<ttot
@@ -77,16 +69,19 @@ end
         # Picard-type iteration
         while err>tol && iter<itMax
             if (it==0 && iter==10) t_tic = Base.time(); ittot = 0 end
-            compute_update!(H2, dHdtau, H, Hold, _dt, damp, min_dxy2, nx, ny, _dx, _dy)
-            H, H2 = H2, H  # pointer swap
+            @cuda blocks=cublocks threads=cuthreads compute_update!(H2, dHdtau, H, Hold, _dt, damp, min_dxy2, nx, ny, _dx, _dy)
+            synchronize()
+            H, H2 = H2, H
             if iter % nout == 0
-                compute_residual!(ResH, H, Hold, _dt, nx, ny, _dx, _dy)
+                @cuda blocks=cublocks threads=cuthreads compute_residual!(ResH, H, Hold, _dt, nx, ny, _dx, _dy)
+                synchronize()
                 err = norm(ResH)/length(ResH)
             end
             iter += 1
         end
         ittot += iter; it += 1; t += dt
-        assign!(Hold, H, nx, ny)
+        @cuda blocks=cublocks threads=cuthreads assign!(Hold, H, nx, ny)
+        synchronize()
     end
     t_toc = Base.time() - t_tic
     A_eff = (2*2+1)/1e9*nx*ny*sizeof(Float64)  # Effective main memory access per iteration [GB]
@@ -99,7 +94,7 @@ end
         opts = (aspect_ratio=1, yaxis=font(fontsize, "Courier"), xaxis=font(fontsize, "Courier"),
                 ticks=nothing, framestyle=:box, titlefontsize=fontsize, titlefont="Courier", colorbar_title="",
                 xlabel="Lx", ylabel="Ly", xlims=(xc[1],xc[end]), ylims=(yc[1],yc[end]), clims=(0.,1.))
-        display(heatmap(xc, yc, H'; c=:davos, title="damped diffusion (nt=$it, iters=$ittot)", opts...))
+        display(heatmap(xc, yc, Array(H)'; c=:davos, title="damped diffusion (nt=$it, iters=$ittot)", opts...))
         if save_fig savefig("diff2D_damp.png") end
     end
     return
