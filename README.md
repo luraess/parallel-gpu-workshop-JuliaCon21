@@ -405,7 +405,7 @@ min_dxy2 = min(dx,dy)^2
 compute_update!(H2, dHdtau, H, Hold, _dt, damp, min_dxy2, _dx, _dy)
 # [...] skipped lines
 ```
-> 💡 Note that the outer loop (over `iy`) can be vectorized using a powerful combination of multi-threading capabilities of the CPU and AVX instructions exposed by the LoopVectorzation package 🚀 - kudos.
+> 💡 Note that the outer loop (over `iy`) can be vectorized using a powerful combination of multi-threading capabilities of the CPU and AVX instructions exposed by the [LoopVectorization.jl] package 🚀 - kudos.
 
 Running [`diffusion_2D_damp_perf_loop_fun.jl`](scripts/diffusion_2D_damp_perf_loop_fun.jl) with `nx = ny = 512` produces following output:
 ```julia-repl
@@ -424,7 +424,7 @@ We are now ready to move to the GPU !
 ### GPU implementation
 So now we have a cool iterative and implicit nonlinear diffusion solver in less than 100 lines of code 🎉. Good enough for mid-resolution calculations. What if we need higher resolution and faster time to solution ? GPU computing makes it possible to go beyond 24 GB/s. Let's slightly modify the [`diffusion_2D_damp_perf_loop_fun.jl`](scripts/diffusion_2D_damp_perf_loop_fun.jl) code to enable GPU execution.
 
-The main idea of GPU parallelisation is to calculate each grid point concurently by a different GPU thread (instaed of the more serial CPU execution) as depicted hereafter:
+The main idea of GPU parallelisation is to calculate each grid point concurrently by a different GPU thread (instead of the more serial CPU execution) as depicted hereafter:
 
 ![](docs/cpu_gpu.png)
 
@@ -465,7 +465,7 @@ cublocks  = (GRIDX,  GRIDY,  1)
 synchronize()
 # [...] skipped lines
 ```
-> 💡 We use `@cuda blocks=cublocks threads=cuthreads` to launch the GPU function on the appropriate number of threads, i.e. "parallel workers". The numerical grid resolution `nx` and `ny` must now be chosen accordingly to the number of parallel workers. Also, note that we need to run a higher resolution in order to saturate the GPU memory bandwith and get relevant performance measure.
+> 💡 We use `@cuda blocks=cublocks threads=cuthreads` to launch the GPU function on the appropriate number of threads, i.e. "parallel workers". The numerical grid resolution `nx` and `ny` must now be chosen accordingly to the number of parallel workers. Also, note that we need to run a higher resolution in order to saturate the GPU memory bandwidth and get relevant performance measure.
 
 Running [`diffusion_2D_damp_perf_gpu.jl`](scripts/diffusion_2D_damp_perf_gpu.jl) with `nx = ny = 4096`
 - on an Nvidia Titan Xp (12GB) GPU produces following output:
@@ -481,7 +481,7 @@ So - that rocks 🚀
 ⤴️ [_back to workshop material_](#workshop-material)
 
 ### XPU implementation
-Let's do a rapid recap; So far we have two performant codes, one CPU-based, the other GPU-based, to solve the nonlinear and implicit diffusion equation in 2D. Wouldn't it be great to have single code that enables both ? The answer is [ParallelStencil.jl] which enables a backend independent syntax implementating parallel stencil kernels to execute on XPUs. The [`diffusion_2D_damp_perf_xpu.jl`](scripts/diffusion_2D_damp_perf_xpu.jl) code uses [ParallelStencil.jl] to combine [`diffusion_2D_damp_perf_gpu.jl`](scripts/diffusion_2D_damp_perf_gpu.jl) and [`diffusion_2D_damp_perf_loop_fun.jl`](scripts/diffusion_2D_damp_perf_loop_fun.jl) into a single code. Backend can be chosen by the `USE_GPU` flag. Using the `parallel_indices` permits to avoid explicit flux calculations:
+Let's do a rapid recap; So far we have two performant codes, one CPU-based, the other GPU-based, to solve the nonlinear and implicit diffusion equation in 2D. Wouldn't it be great to have single code that enables both ? The answer is [ParallelStencil.jl] which enables a backend independent syntax implementing parallel stencil kernels to execute on XPUs. The [`diffusion_2D_damp_perf_xpu.jl`](scripts/diffusion_2D_damp_perf_xpu.jl) code uses [ParallelStencil.jl] to combine [`diffusion_2D_damp_perf_gpu.jl`](scripts/diffusion_2D_damp_perf_gpu.jl) and [`diffusion_2D_damp_perf_loop_fun.jl`](scripts/diffusion_2D_damp_perf_loop_fun.jl) into a single code. Backend can be chosen by the `USE_GPU` flag. Using the `parallel_indices` permits to avoid explicit flux calculations:
 ```julia
 const USE_GPU = true
 using ParallelStencil
@@ -503,7 +503,7 @@ end
 @parallel compute_update!(H2, dHdtau, H, Hold, _dt, damp, min_dxy2, _dx, _dy)
 # [...] skipped lines
 ```
-> 💡 Note that @tturbo is not yet implemented in the CPU backend of [ParallelStencil.jl], which now supports `Threads.@threads`.
+> 💡 Note that `@tturbo` from [LoopVectorization.jl] is not yet implemented in the CPU backend of [ParallelStencil.jl] which currently supports `Threads.@threads`.
 
 Running [`diffusion_2D_damp_perf_xpu.jl`](scripts/diffusion_2D_damp_perf_xpu.jl) with `nx = ny = 4096`
 - on an Nvidia Titan Xp (12GB) GPU produces following output:
@@ -919,6 +919,7 @@ Check out [this material](https://github.com/luraess/geo-hpc-course#running-juli
 [JuliaGPU]: https://juliagpu.org
 [ParallelStencil.jl]: https://github.com/omlins/ParallelStencil.jl
 [ImplicitGlobalGrid.jl]: https://github.com/eth-cscs/ImplicitGlobalGrid.jl
+[LoopVectorization.jl]: https://github.com/JuliaSIMD/LoopVectorization.jl
 
 [BedMachine Greenland v3]: https://sites.uci.edu/morlighem/dataproducts/bedmachine-greenland/
 
