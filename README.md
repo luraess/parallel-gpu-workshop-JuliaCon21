@@ -72,7 +72,7 @@ The detailed steps in the dropdown hereafter will get you started with:
 2. Running the scripts from the workshop repository.
 
 <details>
-<summary>CLICK HERE for the 🚀 getting started steps 🚀</summary>
+<summary>CLICK HERE for the getting started steps 🚀</summary>
 <br>
 
 ## Installing Julia v1.6 (or later)
