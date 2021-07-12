@@ -8,7 +8,7 @@ macro qHx(ix,iy)  esc(:( -(0.5*(H[$ix,$iy+1]+H[$ix+1,$iy+1]))^npow * (H[$ix+1,$i
 macro qHy(ix,iy)  esc(:( -(0.5*(H[$ix+1,$iy]+H[$ix+1,$iy+1]))^npow * (H[$ix+1,$iy+1]-H[$ix+1,$iy])/dy )) end
 macro dtau(ix,iy) esc(:(  (1.0/(min(dx,dy)^2 / H[$ix+1,$iy+1]^npow/4.1) + 1.0/dt)^-1  )) end
 
-@views function diffusion_2D_damp(; do_visu=true, save_fig=false)
+@views function diffusion_2D_damp_perf_loop(; do_visu=true, save_fig=false)
     # Physics
     lx, ly = 10.0, 10.0   # domain size
     npow   = 3            # power-law exponent
@@ -36,7 +36,7 @@ macro dtau(ix,iy) esc(:(  (1.0/(min(dx,dy)^2 / H[$ix+1,$iy+1]^npow/4.1) + 1.0/dt
         iter = 0; err = 2*tol
         # Picard-type iteration
         while err>tol && iter<itMax
-            if (it==1) t_tic = Base.time(); niter = 0 end
+            if (it==1 && iter==0) t_tic = Base.time(); niter = 0 end
             for iy=1:size(dHdtau,2)
                 for ix=1:size(dHdtau,1)
                     dHdtau[ix,iy] = -(H[ix+1, iy+1] - Hold[ix+1, iy+1])/dt + 
@@ -72,7 +72,7 @@ macro dtau(ix,iy) esc(:(  (1.0/(min(dx,dy)^2 / H[$ix+1,$iy+1]^npow/4.1) + 1.0/dt
     A_eff = (2*2+1)/1e9*nx*ny*sizeof(Float64)  # Effective main memory access per iteration [GB]
     t_it  = t_toc/niter                        # Execution time per iteration [s]
     T_eff = A_eff/t_it                         # Effective memory throughput [GB/s]
-    @printf("Time = %1.3f sec, T_eff = %1.2f GB/s (iterTot = %d)\n", t_toc, round(T_eff, sigdigits=2), ittot)
+    @printf("Time = %1.3f sec, T_eff = %1.2f GB/s (niter = %d)\n", t_toc, round(T_eff, sigdigits=2), niter)
     # Visualize
     if do_visu
         fontsize = 12
@@ -85,4 +85,4 @@ macro dtau(ix,iy) esc(:(  (1.0/(min(dx,dy)^2 / H[$ix+1,$iy+1]^npow/4.1) + 1.0/dt
     return
 end
 
-@time diffusion_2D_damp(; do_visu=do_visu);
+diffusion_2D_damp_perf_loop(; do_visu=do_visu)

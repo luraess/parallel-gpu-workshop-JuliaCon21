@@ -38,7 +38,7 @@ end
     return
 end 
 
-@views function diffusion_2D_damp(; do_visu=true, save_fig=false)
+@views function diffusion_2D_damp_perf_xpu(; do_visu=true, save_fig=false)
     # Physics
     lx, ly = 10.0, 10.0   # domain size
     ttot   = 1.0          # total simulation time
@@ -68,7 +68,7 @@ end
         iter = 0; err = 2*tol
         # Picard-type iteration
         while err>tol && iter<itMax
-            if (it==1) t_tic = Base.time(); niter = 0 end
+            if (it==1 && iter==0) t_tic = Base.time(); niter = 0 end
             @parallel compute_update!(H2, dHdtau, H, Hold, _dt, damp, min_dxy2, _dx, _dy)
             H, H2 = H2, H
             if iter % nout == 0
@@ -84,7 +84,7 @@ end
     A_eff = (2*2+1)/1e9*nx*ny*sizeof(Float64)  # Effective main memory access per iteration [GB]
     t_it  = t_toc/niter                        # Execution time per iteration [s]
     T_eff = A_eff/t_it                         # Effective memory throughput [GB/s]
-    @printf("Time = %1.3f sec, T_eff = %1.2f GB/s (iterTot = %d)\n", t_toc, round(T_eff, sigdigits=2), ittot)
+    @printf("Time = %1.3f sec, T_eff = %1.2f GB/s (niter = %d)\n", t_toc, round(T_eff, sigdigits=2), niter)
     # Visualize
     if do_visu
         fontsize = 12
@@ -97,4 +97,4 @@ end
     return
 end
 
-@time diffusion_2D_damp(; do_visu=do_visu);
+diffusion_2D_damp_perf_xpu(; do_visu=do_visu)

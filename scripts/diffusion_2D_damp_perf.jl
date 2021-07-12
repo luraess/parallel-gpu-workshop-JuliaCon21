@@ -13,7 +13,7 @@ macro qHx()  esc(:( -av_xi(H).^npow.*LazyArrays.Diff(H[:,2:end-1], dims=1)/dx ))
 macro qHy()  esc(:( -av_yi(H).^npow.*LazyArrays.Diff(H[2:end-1,:], dims=2)/dy )) end
 macro dtau() esc(:( (1.0./(min(dx, dy)^2 ./inn(H).^npow./4.1) .+ 1.0/dt).^-1  )) end
 
-@views function diffusion_2D_damp(; do_visu=true, save_fig=false)
+@views function diffusion_2D_damp_perf(; do_visu=true, save_fig=false)
     # Physics
     lx, ly = 10.0, 10.0   # domain size
     npow   = 3            # power-law exponent
@@ -42,7 +42,7 @@ macro dtau() esc(:( (1.0./(min(dx, dy)^2 ./inn(H).^npow./4.1) .+ 1.0/dt).^-1  ))
         iter = 0; err = 2*tol
         # Picard-type iteration
         while err>tol && iter<itMax
-            if (it==1) t_tic = Base.time(); niter = 0 end
+            if (it==1 && iter==0) t_tic = Base.time(); niter = 0 end
             dHdtau .= -(inn(H) - inn(Hold))/dt + 
                        (-LazyArrays.Diff(@qHx(), dims=1)/dx -LazyArrays.Diff(@qHy(), dims=2)/dy) +
                        damp*dHdtau                              # damped rate of change
@@ -62,7 +62,7 @@ macro dtau() esc(:( (1.0./(min(dx, dy)^2 ./inn(H).^npow./4.1) .+ 1.0/dt).^-1  ))
     A_eff = (2*2+1)/1e9*nx*ny*sizeof(Float64)  # Effective main memory access per iteration [GB]
     t_it  = t_toc/niter                        # Execution time per iteration [s]
     T_eff = A_eff/t_it                         # Effective memory throughput [GB/s]
-    @printf("Time = %1.3f sec, T_eff = %1.2f GB/s (iterTot = %d)\n", t_toc, round(T_eff, sigdigits=2), ittot)
+    @printf("Time = %1.3f sec, T_eff = %1.2f GB/s (niter = %d)\n", t_toc, round(T_eff, sigdigits=2), niter)
     # Visualize
     if do_visu
         fontsize = 12
@@ -75,4 +75,4 @@ macro dtau() esc(:( (1.0./(min(dx, dy)^2 ./inn(H).^npow./4.1) .+ 1.0/dt).^-1  ))
     return
 end
 
-@time diffusion_2D_damp(; do_visu=do_visu);
+diffusion_2D_damp_perf(; do_visu=do_visu)
