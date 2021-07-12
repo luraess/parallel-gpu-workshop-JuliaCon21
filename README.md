@@ -272,10 +272,10 @@ We see that the explicit approach "over-steepens" the nonlinear diffusive front 
 
 ### Performance considerations
 Efficient algorithms should minimise the time to solution. For iterative algorithms this means:
-1. Ensure fast iterations
-2. Keep the iteration count as low as possible
+1. Keep the iteration count as low as possible
+2. Ensure fast iterations
 
-We just achieved (2.) with the implicit damped approach. Let's fix (1.).
+We just achieved (1.) with the implicit damped approach. Let's fix (2.).
 
 Many-core processors as GPUs are throughput-oriented systems that use their massive parallelism to hide latency. On the scientific application side, most algorithms require only a few operations or flops compared to the amount of numbers or bytes accessed from main memory, and thus are significantly memory bound; the Flop/s metric is no longer the most adequate for reporting performance. This status motivated the development of a memory throughput-based performance evaluation metric, `T_eff`, to evaluate the performance of iterative stencil-based solvers \[[1][JuliaCon20a]\].
 
