@@ -530,8 +530,10 @@ Time = 3.750 sec, T_eff = 340.00 GB/s (niter = 1904)
 
 ### Performance and scaling
 We have developed 6 scripts, 3 CPU-based and 3 GPU-based, we can now use to realise a scaling test and report `T_eff` as function of numerical grid resolution `nx = [64 128, 256, 512, 1024, 2048, 4096]`:
+
 ![](docs/perf_cpu.png)
 ![](docs/perf_gpu.png)
+
 
 <!-- ## Part 3 - Solving ice flow PDEs on GPUs
 
