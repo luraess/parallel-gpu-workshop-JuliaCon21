@@ -59,8 +59,8 @@ end
     dx, dy = lx/nx, ly/ny # grid size
     xc, yc = LinRange(dx/2, lx-dx/2, nx), LinRange(dy/2, ly-dy/2, ny)
     # Array allocation
-    ResH   = CUDA.zeros(nx-2, ny-2) # normal grid, without boundary points
-    dHdtau = CUDA.zeros(nx-2, ny-2) # normal grid, without boundary points
+    ResH   = CUDA.zeros(Float64, nx-2, ny-2) # normal grid, without boundary points
+    dHdtau = CUDA.zeros(Float64, nx-2, ny-2) # normal grid, without boundary points
     # Initial condition
     H      = CuArray(exp.(.-(xc.-lx/2).^2 .-(yc.-ly/2)'.^2))
     Hold   = copy(H)

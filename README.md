@@ -453,8 +453,8 @@ GRIDX  = 16*8
 GRIDY  = 32*16
 nx, ny = BLOCKX*GRIDX, BLOCKY*GRIDY # numerical grid resolution
 # [...] skipped lines
-ResH   = CUDA.zeros(nx-2, ny-2) # normal grid, without boundary points
-dHdtau = CUDA.zeros(nx-2, ny-2) # normal grid, without boundary points
+ResH   = CUDA.zeros(Float64, nx-2, ny-2) # normal grid, without boundary points
+dHdtau = CUDA.zeros(Float64, nx-2, ny-2) # normal grid, without boundary points
 # [...] skipped lines
 H      = CuArray(exp.(.-(xc.-lx/2).^2 .-(yc.-ly/2)'.^2))
 # [...] skipped lines
@@ -467,9 +467,11 @@ synchronize()
 ```
 > 💡 We use `@cuda blocks=cublocks threads=cuthreads` to launch the GPU function on the appropriate number of threads, i.e. "parallel workers". The numerical grid resolution `nx` and `ny` must now be chosen accordingly to the number of parallel workers. Also, note that we need to run a higher resolution in order to saturate the GPU memory bandwidth and get relevant performance measure.
 
+> ⚠ Default precision in `CUDA.jl` is `Float32`, so we have to enforce `Float64` here.
+
 Running [`diffusion_2D_damp_perf_gpu.jl`](scripts/diffusion_2D_damp_perf_gpu.jl) with `nx = ny = 4096` on an Nvidia Tesla V100 PCIe (16GB) GPU produces following output:
 ```julia-repl
-Time = 1.351 sec, T_eff = 950.00 GB/s (niter = 1904)
+Time = 1.668 sec, T_eff = 770.00 GB/s (niter = 1904)
 ```
 So - that rocks 🚀
 
