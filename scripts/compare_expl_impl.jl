@@ -8,8 +8,8 @@ save_fig=false
 @views function compare_expl_impl(; save_fig=false)
     # run the codes
     do_visu = false
-    xc, yc, H0, H_expl = diffusion_2D_expl(; do_visu=do_visu)
-    xc, yc, H0, H_damp = diffusion_2D_damp(; do_visu=do_visu)
+    xc, yc, H_expl = diffusion_2D_expl(; do_visu=do_visu)
+    xc, yc, H_damp = diffusion_2D_damp(; do_visu=do_visu)
     # extract ∆
     ∆_expl_impl = 100.0*(H_expl .- H_damp)./H_damp
     ∆max = maximum(abs.(∆_expl_impl))

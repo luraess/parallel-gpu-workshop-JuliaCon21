@@ -1,4 +1,4 @@
-using LoopVectorization, Plots, Printf, LinearAlgebra
+using Plots, Printf, LinearAlgebra
 
 const do_visu = parse(Bool, ENV["DO_VIZ"])
 const do_save = parse(Bool, ENV["DO_SAVE"])
@@ -14,17 +14,12 @@ macro qHy(ix,iy)  esc(:( -(0.5*(H[$ix+1,$iy]+H[$ix+1,$iy+1]))*(0.5*(H[$ix+1,$iy]
 macro dtau(ix,iy) esc(:(  (1.0/(min_dxy2 / (H[$ix+1,$iy+1]*H[$ix+1,$iy+1]*H[$ix+1,$iy+1]) / 4.1) + _dt)^-1  )) end
 
 function compute_update!(H2, dHdtau, H, Hold, _dt, damp, min_dxy2, _dx, _dy)
-    @tturbo for iy=1:size(dHdtau,2)
+    Threads.@threads for iy=1:size(dHdtau,2)
     # for iy=1:size(dHdtau,2)
         for ix=1:size(dHdtau,1)
             dHdtau[ix,iy] = -(H[ix+1, iy+1] - Hold[ix+1, iy+1])*_dt + 
                              (-(@qHx(ix+1,iy)-@qHx(ix,iy))*_dx -(@qHy(ix,iy+1)-@qHy(ix,iy))*_dy) +
                              damp*dHdtau[ix,iy]                        # damped rate of change
-        end
-    end
-    @tturbo for iy=1:size(dHdtau,2)
-    # for iy=1:size(dHdtau,2)
-        for ix=1:size(dHdtau,1)
             H2[ix+1,iy+1] = H[ix+1,iy+1] + @dtau(ix,iy)*dHdtau[ix,iy]  # update rule, sets the BC as H[1]=H[end]=0
         end
     end
@@ -32,7 +27,7 @@ function compute_update!(H2, dHdtau, H, Hold, _dt, damp, min_dxy2, _dx, _dy)
 end
 
 function compute_residual!(ResH, H, Hold, _dt, _dx, _dy)
-    @tturbo for iy=1:size(ResH,2)
+    Threads.@threads for iy=1:size(ResH,2)
     # for iy=1:size(ResH,2)
         for ix=1:size(ResH,1)
             ResH[ix,iy] = -(H[ix+1, iy+1] - Hold[ix+1, iy+1])*_dt + 
@@ -43,7 +38,7 @@ function compute_residual!(ResH, H, Hold, _dt, _dx, _dy)
 end
 
 function assign!(Hold, H)
-    @tturbo for iy=1:size(H,2)
+    Threads.@threads for iy=1:size(H,2)
     # for iy=1:size(H,2)
         for ix=1:size(H,1)
             Hold[ix,iy] = H[ix,iy]

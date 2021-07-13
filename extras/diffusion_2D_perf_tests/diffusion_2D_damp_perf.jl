@@ -1,4 +1,5 @@
 using LazyArrays, Plots, Printf, LinearAlgebra
+using LazyArrays: Diff
 
 const do_visu = parse(Bool, ENV["DO_VIZ"])
 const do_save = parse(Bool, ENV["DO_SAVE"])
@@ -49,13 +50,13 @@ macro dtau() esc(:( (1.0./(min(dx, dy)^2 ./inn(H).^npow./4.1) .+ 1.0/dt).^-1  ))
         while err>tol && iter<itMax
             if (it==1 && iter==0) t_tic = Base.time(); niter = 0 end
             dHdtau .= -(inn(H) - inn(Hold))/dt + 
-                       (-LazyArrays.Diff(@qHx(), dims=1)/dx -LazyArrays.Diff(@qHy(), dims=2)/dy) +
+                       (-Diff(@qHx(), dims=1)/dx -Diff(@qHy(), dims=2)/dy) +
                        damp*dHdtau                              # damped rate of change
             H2[2:end-1,2:end-1] .= inn(H) .+ @dtau().*dHdtau    # update rule, sets the BC as H[1]=H[end]=0
             H, H2 = H2, H                                       # pointer swap
             if iter % nout == 0
                 ResH  .= -(inn(H) - inn(Hold))/dt + 
-                          (-LazyArrays.Diff(@qHx(), dims=1)/dx -LazyArrays.Diff(@qHy(), dims=2)/dy)  # residual of the PDE
+                          (-Diff(@qHx(), dims=1)/dx -Diff(@qHy(), dims=2)/dy)  # residual of the PDE
                 err = norm(ResH)/length(ResH)
             end
             iter += 1; niter += 1

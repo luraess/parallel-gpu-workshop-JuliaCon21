@@ -4,13 +4,8 @@ authors = ["Ludovic Räss", "Mauro Werder"]
 
 [deps]
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
-Downloads = "f43a241f-c20a-4ad4-852c-f6b1247861c6"
-GeoData = "9b6fcbb8-86d6-11e9-1ce7-23a6bb139a78"
-JLD = "4138dd39-2aa7-5051-a626-17a0bb65d9c8"
 LazyArrays = "5078a376-72f3-5289-bfd5-ec5146d43c02"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
-LoopVectorization = "bdcacae8-1622-11e9-2a5c-532679323890"
-NCDatasets = "85f8d34a-cbdd-5861-8df4-14fed0d494ab"
 ParallelStencil = "94395366-693c-11ea-3b26-d9b7aac5d958"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
@@ -18,9 +13,6 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [compat]
 CUDA = "3.1"
-GeoData = "0.4"
-JLD = "0.12"
-NCDatasets = "0.11"
 ParallelStencil = "0.5"
 Plots = "1.13"
 julia = "1.6"
