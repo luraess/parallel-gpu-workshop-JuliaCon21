@@ -531,11 +531,14 @@ Time = 3.750 sec, T_eff = 340.00 GB/s (niter = 1904)
 ⤴️ [_back to workshop material_](#workshop-material)
 
 ### Performance and scaling
-We have developed 6 scripts, 3 CPU-based and 3 GPU-based, we can now use to realise a scaling test and report `T_eff` as function of numerical grid resolution `nx = [64 128, 256, 512, 1024, 2048, 4096]` and up to `[..., 8192, 16384]` on GPU:
+We have developed 6 scripts, 3 CPU-based and 3 GPU-based, we can now use to realise a scaling test and report `T_eff` as function of numerical grid resolution `nx = [64 128, 256, 512, 1024, 2048, 4096]` and including `[..., 8192, 16384]` values on the GPU:
 
 ![](docs/perf_cpu.png)
 ![](docs/perf_gpu.png)
 
+Note that `T_peak` of the Nvidia Tesla V100 GPU is 840 GB/s. The code thus achieves 92% of peak hardware performance. The [`diffusion_2D_damp_perf_gpu.jl`](scripts/diffusion_2D_damp_perf_gpu.jl) codes for performance tests can be found in [extras/diffusion_2D_perf_tests](extras/diffusion_2D_perf_tests).
+
+⤴️ [_back to workshop material_](#workshop-material)
 
 <!-- ## Part 3 - Solving ice flow PDEs on GPUs
 
