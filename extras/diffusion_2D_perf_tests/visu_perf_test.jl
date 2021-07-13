@@ -1,11 +1,11 @@
 using DelimitedFiles, Plots, Printf
 
-perf_i5 = readdlm("out_diffusion_2D_damp_perf_i5.txt")
-perf_loop_i5 = readdlm("out_diffusion_2D_damp_perf_loop_i5.txt")
-perf_loop_fun_i5 = readdlm("out_diffusion_2D_damp_perf_loop_fun_i5.txt")
-perf_gpu_v100 = readdlm("out_diffusion_2D_damp_perf_gpu_v100.txt")
-perf_xpu_v100 = readdlm("out_diffusion_2D_damp_perf_xpu_v100.txt")
-xpu_v100 = readdlm("out_diffusion_2D_damp_xpu_v100.txt")
+perf_i5 = readdlm("out_diffusion_2D_damp_perf.txt")
+perf_loop_i5 = readdlm("out_diffusion_2D_damp_perf_loop.txt")
+perf_loop_fun_i5 = readdlm("out_diffusion_2D_damp_perf_loop_fun.txt")
+perf_gpu_v100 = readdlm("out_diffusion_2D_damp_perf_gpu.txt")
+perf_xpu_v100 = readdlm("out_diffusion_2D_damp_perf_xpu.txt")
+xpu_v100 = readdlm("out_diffusion_2D_damp_xpu.txt")
 
 plot_fig = 2
 save_fig = false

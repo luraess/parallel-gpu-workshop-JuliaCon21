@@ -41,8 +41,8 @@ end
     # Numerics
     BLOCKX = 32
     BLOCKY = 8
-    GRIDX  = 16*8
-    GRIDY  = 32*16
+    GRIDX  = 16*16
+    GRIDY  = 32*32
     nx, ny = BLOCKX*GRIDX, BLOCKY*GRIDY # numerical grid resolution
     nout   = 100          # check error every nout
     tol    = 1e-6         # tolerance

@@ -49,7 +49,7 @@ end
     ttot   = 1.0          # total simulation time
     dt     = 0.2          # physical time step
     # Numerics
-    # nx, ny = 16*32*8, 16*32*8 # numerical grid resolution
+    # nx, ny = 16*32*16, 16*32*16 # numerical grid resolution
     # nx, ny = 512, 512 # numerical grid resolution
     nout   = 100          # check error every nout
     tol    = 1e-6         # tolerance

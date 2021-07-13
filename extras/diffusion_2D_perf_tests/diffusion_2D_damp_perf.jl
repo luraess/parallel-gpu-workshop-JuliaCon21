@@ -23,13 +23,13 @@ macro dtau() esc(:( (1.0./(min(dx, dy)^2 ./inn(H).^npow./4.1) .+ 1.0/dt).^-1  ))
     # Physics
     lx, ly = 10.0, 10.0   # domain size
     npow   = 3            # power-law exponent
-    ttot   = 0.4          # total simulation time
+    ttot   = 1.0          # total simulation time
     dt     = 0.2          # physical time step
     # Numerics
     # nx, ny = 512, 512     # numerical grid resolution
     nout   = 100          # check error every nout
-    tol    = 1e-60         # tolerance
-    itMax  = 5e2          # max number of iterations
+    tol    = 1e-6         # tolerance
+    itMax  = 1e5          # max number of iterations
     damp   = 1-35/nx      # damping (this is a tuning parameter, dependent on e.g. grid resolution)
     # Derived numerics
     dx, dy = lx/nx, ly/ny # grid size

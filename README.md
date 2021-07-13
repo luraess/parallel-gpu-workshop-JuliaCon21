@@ -171,12 +171,8 @@ This section lists the material discussed within this 3h workshop:
     * [GPU implementation](#gpu-implementation)
     * [XPU implementation](#xpu-implementation)
     * [Performance and scaling](#performance-and-scaling)
-* [Part 3 - Solving ice flow PDEs on GPUs](#part-3---solving-ice-flow-pdes-on-gpus)
-    * [SIA equation](#sia-equation-applied-to-the-greenland-ice-sheet)
-    * [SIA implementation](#sia-implementation)
-    * [GPU SIA implementation](#gpu-sia-implementation)
-    * [XPU SIA implementation](#xpu-sia-implementation)
-    * [Greenland's ice cap evolution](#greenlands-ice-cap-evolution)
+* [Part 3 - Distributed computing on multiple CPUs and GPUs](#part-3---distributed-computing-on-multiple-cpus-and-gpus)
+    * []()
 
 💡 In this workshop we will implement a 2D nonlinear diffusion equation on GPUs in Julia using the finite-difference method and an iterative solving approach.
 
@@ -202,7 +198,9 @@ The [`diffusion_2D_expl.jl`](scripts/diffusion_2D_expl.jl) code implements an it
 H0 = exp(-(x-lx/2.0)^2 -(y-ly/2.0)^2)
 ```
 
-![](docs/diff2D_expl.png)
+![](docs/diffusion_2D_expl.gif)
+
+> 💡 The animation above was generated using the [`diffusion_2D_expl_gif.jl`](extras/diffusion_2D_expl_gif.jl) script in [extras](extras).
 
 A simple way to solve nonlinear diffusion, BUT:
 - given the explicit nature of the scheme we have a restrictive limitation on the maximal allowed time step (subject to the CFL stability condition):
@@ -310,7 +308,7 @@ T_eff = A_eff/t_it                         # Effective memory throughput [GB/s]
 ```
 Running [`diffusion_2D_damp_perf.jl`](scripts/diffusion_2D_damp_perf.jl) with `nx = ny = 512`, starting Julia with `-O3 --check-bounds=no` produces following output on an Intel Quad-Core i5-4460  CPU @3.20GHz processor
 ```julia-repl
-Time = 13.288 sec, T_eff = 0.39 GB/s (niter = 500)
+Time = 21.523 sec, T_eff = 0.39 GB/s (niter = 804)
 ```
 
 ⤴️ [_back to workshop material_](#workshop-material)
@@ -342,10 +340,10 @@ H, H2 = H2, H  # pointer swap
 
 Running [`diffusion_2D_damp_perf_loop.jl`](scripts/diffusion_2D_damp_perf_loop.jl) with `nx = ny = 512` produces following output:
 ```julia-repl
-Time = 4.772 sec, T_eff = 1.80 GB/s (niter = 804)
+Time = 4.774 sec, T_eff = 1.80 GB/s (niter = 804)
 ```
 
-The next step is to wrap these physics calculations into functions (later called kernels on the GPU) and define them before the main function of the script, resulting in the [`diffusion_2D_damp_perf_loop_fun.jl`](scripts/diffusion_2D_damp_perf_loop_fun.jl) code. Note the loop fusion in the `function compute_update!`:
+The next step is to wrap these physics calculations into functions (later called kernels on the GPU) and define them before the main function of the script, resulting in the [`diffusion_2D_damp_perf_loop_fun.jl`](scripts/diffusion_2D_damp_perf_loop_fun.jl) code. Note the loop fusion in the `function compute_update!()`:
 ```julia
 # [...] skipped lines
 macro qHx(ix,iy)  esc(:( -(0.5*(H[$ix,$iy+1]+H[$ix+1,$iy+1]))*(0.5*(H[$ix,$iy+1]+H[$ix+1,$iy+1]))*(0.5*(H[$ix,$iy+1]+H[$ix+1,$iy+1])) * (H[$ix+1,$iy+1]-H[$ix,$iy+1])*_dx )) end
@@ -372,9 +370,9 @@ compute_update!(H2, dHdtau, H, Hold, _dt, damp, min_dxy2, _dx, _dy)
 ```
 > 💡 Note that the outer loop (over `iy`) can be vectorized using multi-threading capabilities of the CPU accessible via `Threads.@threads` (see [Getting started](#getting-started) for more infos).
 
-Running [`diffusion_2D_damp_perf_loop_fun.jl`](scripts/diffusion_2D_damp_perf_loop_fun.jl) with `nx = ny = 512` produces following output:
+Running [`diffusion_2D_damp_perf_loop_fun.jl`](scripts/diffusion_2D_damp_perf_loop_fun.jl) with `nx = ny = 512` on 4 cores produces following output:
 ```julia-repl
-Time = 0.349 sec, T_eff = 24.00 GB/s (niter = 804)
+Time = 0.961 sec, T_eff = 8.80 GB/s (niter = 804)
 ```
 Since the performance increases and gets closer to hardware limit (memory copy values), some details start to become perfromance limiters, namely:
 - divisions instead of multiplications
@@ -414,8 +412,8 @@ end
 # [...] skipped lines
 BLOCKX = 32
 BLOCKY = 8
-GRIDX  = 16*8
-GRIDY  = 32*16
+GRIDX  = 16*16
+GRIDY  = 32*32
 nx, ny = BLOCKX*GRIDX, BLOCKY*GRIDY # numerical grid resolution
 # [...] skipped lines
 ResH   = CUDA.zeros(Float64, nx-2, ny-2) # normal grid, without boundary points
@@ -436,7 +434,7 @@ synchronize()
 
 Running [`diffusion_2D_damp_perf_gpu.jl`](scripts/diffusion_2D_damp_perf_gpu.jl) with `nx = ny = 8192` on an Nvidia Tesla V100 PCIe (16GB) GPU produces following output:
 ```julia-repl
-Time = 10.094 sec, T_eff = 770.00 GB/s (niter = 2904)
+Time = 10.084 sec, T_eff = 770.00 GB/s (niter = 2904)
 ```
 So - that rocks 🚀
 
@@ -469,7 +467,7 @@ end
 
 Running [`diffusion_2D_damp_perf_xpu.jl`](scripts/diffusion_2D_damp_perf_xpu.jl) with `nx = ny = 8192` on an Nvidia Tesla V100 PCIe (16GB) GPU produces following output:
 ```julia-repl
-Time = 10.316 sec, T_eff = 760.00 GB/s (niter = 2904)
+Time = 10.323 sec, T_eff = 760.00 GB/s (niter = 2904)
 ```
 
 The alternative and "default" implementation using [ParallelStencil.jl] would allow for using macros exposed by the `FiniteDifferences2D` module for a math-close notation in the kernels:
@@ -499,6 +497,7 @@ Time = 21.420 sec, T_eff = 360.00 GB/s (niter = 2904)
 We have developed 6 scripts, 3 CPU-based and 3 GPU-based, we can now use to realise a scaling test and report `T_eff` as function of numerical grid resolution `nx = [64 128, 256, 512, 1024, 2048, 4096]` and including `[..., 8192, 16384]` values on the GPU:
 
 ![](docs/perf_cpu.png)
+
 ![](docs/perf_gpu.png)
 
 Note that `T_peak` of the Nvidia Tesla V100 GPU is 840 GB/s. The code thus achieves 92% of peak hardware performance. The [`diffusion_2D_damp_perf_gpu.jl`](scripts/diffusion_2D_damp_perf_gpu.jl) codes for performance tests can be found in [extras/diffusion_2D_perf_tests](extras/diffusion_2D_perf_tests).
@@ -508,7 +507,7 @@ Note that `T_peak` of the Nvidia Tesla V100 GPU is 840 GB/s. The code thus achie
 ## Part 3 - Distributed computing on multiple CPUs and GPUs
 
 
-
+⤴️ [_back to workshop material_](#workshop-material)
 
 # Further reading
 \[1\] [Omlin, S., Räss, L., Kwasniewski, G., Malvoisin, B., & Podladchikov, Y. Y. (2020). Solving Nonlinear Multi-Physics on GPU Supercomputers with Julia. JuliaCon Conference, virtual.][JuliaCon20a]

@@ -46,8 +46,8 @@ end
     # Numerics
     BLOCKX = 32
     BLOCKY = 8
-    # GRIDX  = 16*8
-    # GRIDY  = 32*16
+    # GRIDX  = 16*16
+    # GRIDY  = 32*32
     GRIDX  = Int(nxx/BLOCKX)
     GRIDY  = Int(nyy/BLOCKY)
     nx, ny = BLOCKX*GRIDX, BLOCKY*GRIDY # numerical grid resolution
