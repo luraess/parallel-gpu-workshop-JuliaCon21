@@ -22,7 +22,7 @@ x = perf_i5[[1,4,5,6,7],1]
 ticks = collect(x)
 ticklabels = [ @sprintf("%.f",x) for x in ticks ]
 
-p1 = plot(perf_i5[:,1], perf_i5[:,4]; xlims=(-50,4200), ylims=(-1, 32), label="CPU broadcast", opts...)
+p1 = plot(perf_i5[:,1], perf_i5[:,4]; xlims=(-50,4200), ylims=(-0.5, 12), label="CPU broadcast", opts...)
 plot!(perf_loop_i5[:,1], perf_loop_i5[:,4]; label="CPU loop", opts...)
 plot!(xticks=(ticks,ticklabels),xrotation=0)
 display(plot!(perf_loop_fun_i5[:,1], perf_loop_fun_i5[:,4]; label="CPU loop function", opts...))

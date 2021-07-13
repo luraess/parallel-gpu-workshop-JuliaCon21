@@ -200,7 +200,7 @@ H0 = exp(-(x-lx/2.0)^2 -(y-ly/2.0)^2)
 
 ![](docs/diffusion_2D_expl.gif)
 
-> 💡 The animation above was generated using the [`diffusion_2D_expl_gif.jl`](extras/diffusion_2D_expl_gif.jl) script in [extras](extras).
+> 💡 The animation above was generated using the [`diffusion_2D_expl_gif.jl`](extras/diffusion_2D_expl_gif.jl) script located in [extras](extras).
 
 A simple way to solve nonlinear diffusion, BUT:
 - given the explicit nature of the scheme we have a restrictive limitation on the maximal allowed time step (subject to the CFL stability condition):
