@@ -7,7 +7,7 @@ perf_gpu_v100 = readdlm("out_diffusion_2D_damp_perf_gpu_v100.txt")
 perf_xpu_v100 = readdlm("out_diffusion_2D_damp_perf_xpu_v100.txt")
 xpu_v100 = readdlm("out_diffusion_2D_damp_xpu_v100.txt")
 
-plot_fig = 1
+plot_fig = 2
 save_fig = false
 
 fontsize = 11
@@ -34,7 +34,7 @@ x = perf_gpu_v100[[1,6,7,8,9],1]
 ticks = collect(x)
 ticklabels = [ @sprintf("%.f",x) for x in ticks ]
 
-p2 = plot(perf_gpu_v100[:,1], perf_gpu_v100[:,4]; xlims=(-50, 17000), ylims=(-10, 1300), label="GPU", xlabel="grid resolution (nx)", opts...)
+p2 = plot(perf_gpu_v100[:,1], perf_gpu_v100[:,4]; xlims=(-50, 17000), ylims=(-10, 1100), label="GPU", xlabel="grid resolution (nx)", opts...)
 plot!(perf_xpu_v100[:,1], perf_xpu_v100[:,4]; label="XPU parallel_indices", opts...)
 plot!(xticks=(ticks,ticklabels),xrotation=0)
 display(plot!(xpu_v100[:,1], xpu_v100[:,4]; label="XPU parallel", opts...))
