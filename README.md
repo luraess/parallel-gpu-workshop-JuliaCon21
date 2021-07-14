@@ -144,7 +144,7 @@ You should then see a figure displayed showing the nonlinear diffusion of a quan
 
 ## Multi-threading on CPUs
 On the CPU, multi-threading is made accessible via [Base.Threads]. To make use of threads, Julia needs to be launched with
-```
+```sh
 julia --project -t auto
 ```
 which will launch Julia with as many threads are there are cores on your machine (including hyper-threaded cores).  Alternatively set
@@ -154,6 +154,42 @@ the environment variable [JULIA_NUM_THREADS], e.g. `export JULIA_NUM_THREADS=2` 
 The [CUDA.jl] module permits to launch compute kernels on Nvidia GPUs natively from within [Julia]. [JuliaGPU] provides further reading and [introductory material](https://juliagpu.gitlab.io/CUDA.jl/tutorials/introduction/) about GPU ecosystems within Julia. If you have an Nvidia CUDA capable GPU device, also export following environment vaiable prior to installing the [CUDA.jl] package:
 ```sh
 export JULIA_CUDA_USE_BINARYBUILDER=false
+```
+
+## Julia MPI
+The following steps permit you to install [MPI.jl] on your machine and test the it:
+1. Julia MPI being a dependency of this Julia project [MPI.jl] should have been added upon executin `instantiate` command from within the package manager [see here](#packages-installation). 
+
+2. Install `mpiexecjl`:
+```julia-repl
+julia> using MPI
+
+julia> MPI.install_mpiexecjl()
+[ Info: Installing `mpiexecjl` to `HOME/.julia/bin`...
+[ Info: Done!
+```
+3. Then, one should add `HOME/.julia/bin` to PATH in order to launch the Julia MPI wrapper `mpiexecjl`.
+
+4. Running a Julia MPI code `<my_script.jl>` on `np` processes:
+```sh
+$ HOME/.julia/bin/mpiexecjl -n np julia --project <my_script.jl>
+```
+
+5. To test the Julia MPI installation, launch the [hello_mpi.jl](extras/hello_mpi.jl) using the Julia MPI wrapper `mpiexecjl` (located in `~/.julia/bin`) on 4 processes:
+```sh
+$ mpiexecjl -n 4 julia --project extras/hello_mpi.jl
+$ Hello world, I am 0 of 3
+$ Hello world, I am 1 of 3
+$ Hello world, I am 2 of 3
+$ Hello world, I am 3 of 3
+```
+> 💡 Note: On MacOS, you may encounter this issue (https://github.com/JuliaParallel/MPI.jl/issues/407). To fix it, define following `ENV` variable:
+```sh
+$ export MPICH_INTERFACE_HOSTNAME=localhost
+```
+> and add `-host localhost` to the execution script:
+```sh
+$ HOME/.julia/bin/mpiexecjl -n 4 -host localhost julia --project extras/hello_mpi.jl
 ```
 
 <br>
@@ -174,7 +210,8 @@ This section lists the material discussed within this 3h workshop:
     * [XPU implementation](#xpu-implementation)
     * [Performance and scaling](#performance-and-scaling)
 * [Part 3 - Distributed computing on multiple CPUs and GPUs](#part-3---distributed-computing-on-multiple-cpus-and-gpus)
-    * []()
+    * [Distributed memory and fake parallelisation](#distributed-memory-and-fake-parallelisation)
+    * [Distributed Julia computing using MPI](#distributed-julia-computing-using-mpi)
 
 💡 In this workshop we will implement a 2D nonlinear diffusion equation on GPUs in Julia using the finite-difference method and an iterative solving approach.
 
@@ -502,11 +539,54 @@ We have developed 6 scripts, 3 CPU-based and 3 GPU-based, we can now use to real
 
 ![](docs/perf_gpu.png)
 
-Note that `T_peak` of the Nvidia Tesla V100 GPU is 840 GB/s. The code thus achieves 92% of peak hardware performance. The [`diffusion_2D_damp_perf_gpu.jl`](scripts/diffusion_2D_damp_perf_gpu.jl) codes for performance tests can be found in [extras/diffusion_2D_perf_tests](extras/diffusion_2D_perf_tests).
+Note that `T_peak` of the Nvidia Tesla V100 GPU is 840 GB/s. Our GPU code thus achieves 92% of hardware peak performance. The codes used for performance tests and testing routine can be found in [extras/diffusion_2D_perf_tests](extras/diffusion_2D_perf_tests).
 
 ⤴️ [_back to workshop material_](#workshop-material)
 
 ## Part 3 - Distributed computing on multiple CPUs and GPUs
+In this last part of the workshop, we will explore multi-XPU capabilities. This will enable our codes to run on multiple CPUs and GPUs in order to scale on modern multi-GPU nodes, clusters and supercomputers. Also, we will experiment with basic concepts of distributed memory computing approach using Julia's MPI wrapper [MPI.jl]. In the proposed approach, each MPI process handles one CPU thread. In the MPI GPU case (multi-GPUs), each MPI process handles one GPU. The [Getting started](#getting-started) section contains useful information in the **Julia MPI** section to get you set up.
+
+### Distributed memory and fake parallelisation
+As a first step, we will look at the [`diffusion_1D_2procs.jl`](scripts/diffusion_1D_2procs.jl) code that solves the linear diffusion equations using a "fake-parallelisation" approach. We split the calculation on two distinct left and right domains, wich requires left and right `H` arrays, `HL` and `HR`, respectively:
+```julia
+# Compute physics locally
+HL[2:end-1] .= HL[2:end-1] + dt*λ*diff(diff(HL)/dx)/dx
+HR[2:end-1] .= HR[2:end-1] + dt*λ*diff(diff(HR)/dx)/dx
+# Update boundaries (later MPI)
+HL[end] = HR[2]
+HR[1]   = HL[end-1]
+# Global picture
+H .= [HL[1:end-1]; HR[2:end]]
+```
+We see that a correct boundary update is the critical part for a successful implementation. In our apporach, we need an overlap of 2 cells in order to avoid any artifacts at the transition between the left and right domains.
+
+The next step would be to generalise the "2 processes" concept to "n-processes", keeping the "fake-parallelisation" approach. The [`diffusion_1D_nprocs.jl`](scripts/diffusion_1D_nprocs.jl) code contains this modification:
+```julia
+for ip = 1:np # compute physics locally
+    H[2:end-1,ip] .= H[2:end-1,ip] + dt*λ*diff(diff(H[:,ip])/dxg)/dxg
+end
+for ip = 1:np-1 # update boundaries
+    H[end,ip  ] = H[    2,ip+1]
+    H[  1,ip+1] = H[end-1,ip  ]
+end
+for ip = 1:np # global picture
+    i1 = 1 + (ip-1)*(nx-2)
+    Hg[i1:i1+nx-2] .= H[1:end-1,ip]
+end
+```
+The number of fake processes are stored in the second dimension of the array `H`. The `# update boundaries` steps are adpted accordingly. All the physica calculations happen on the local chunks of the arrays. We only need "global" knowledge in the definition of the initial condition, in order to e.g. initialise the Gaussian distribution using global and not local coordinates.
+
+So far, so good, we are now ready to write a script that would truly distribute calculations on different processors using [MPI.jl].
+
+### Distributed Julia computing using MPI
+
+
+<!-- 20. Discover a concise MPI 1D heat diffusion example [/scripts/heat_1D_mpi.jl](/scripts/heat_1D_mpi.jl). Learn about the minimal requirements to initialise a Cartesian MPI topology and how to code the boundary update functions (here using blocking messages). Use the [/scripts/vizme1D_mpi.jl](/scripts/vizme1D_mpi.jl) script to visualise the results (each MPI process saving it's local output).
+21. **TODO** Yay, you have your MPI 1D Julia script running! Finalise the MPI 2D heat diffusion script [/scripts/heat_2D_mpi_tmp.jl](/scripts/heat_2D_mpi_tmp.jl) to solve the 2D diffusion equation using MPI. Use the [/scripts/vizme2D_mpi.jl](/scripts/vizme2D_mpi.jl) script to visualise the results (each MPI process saving it's local output).
+22. Now that you demystified distributed memory parallelisation, see how using [ImplicitGlobalGrid.jl] along with [ParallelStencil.jl] leads to concise and efficient distributed memory parallelisation on multiple _XPUs_ in 2D [/scripts/heat_2D_multixpu.jl](/scripts/heat_2D_multixpu.jl). Also, take a closer look at the [@hide_communication](https://github.com/luraess/geo-hpc-course/blob/0a722ac5f6da47779dfceadfec79b92c95e9e40e/scripts/heat_2D_multixpu.jl#L61) feature. Further infos can be found [here](https://github.com/omlins/ParallelStencil.jl#seamless-interoperability-with-communication-packages-and-hiding-communication).
+23. **TODO** Instrument the 2D shallow ice code sia_2D_xpu.jl (task 14.) to enable distributed memory parallelisation using [ImplicitGlobalGrid.jl] along with [ParallelStencil.jl].
+> 💡 Use [/solutions/sia_2D_xpu.jl](/solutions/sia_2D_xpu.jl) for a quick start, and [/solutions/sia_2D_multixpu.jl](/solutions/sia_2D_multixpu.jl) for a solution.
+24. Yay, you made it - you demystified running Julia codes in parallel on multi-XPU :-) Q&A. -->
 
 
 ⤴️ [_back to workshop material_](#workshop-material)
@@ -532,6 +612,7 @@ Note that `T_peak` of the Nvidia Tesla V100 GPU is 840 GB/s. The code thus achie
 [JuliaGPU]: https://juliagpu.org
 [ParallelStencil.jl]: https://github.com/omlins/ParallelStencil.jl
 [ImplicitGlobalGrid.jl]: https://github.com/eth-cscs/ImplicitGlobalGrid.jl
+[MPI.jl]: https://juliaparallel.github.io/MPI.jl/stable/examples/01-hello/
 
 [JuliaCon20a]: https://www.youtube.com/watch?v=vPsfZUqI4_0
 [JuliaCon20b]: https://www.youtube.com/watch?v=1t1AKnnGRqA
