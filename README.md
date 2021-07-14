@@ -651,7 +651,7 @@ will generate one output file for each MPI process. Use the [scripts/vizme1D_mpi
 
 Yay 🎉 - we just made a Julia parallel MPI diffusion solver in _only_ 70 lines of code.
 
-Hold-on, the [`diffusion_2D_mpi.jl`](scripts/diffusion_2D_mpi.jl) code implements a 2D version of the [`diffusion_1D_mpi.jl`](scripts/diffusion_1D_mpi.jl) code. Nothing is really new in there, but it may be interesting to see how boundary update routines are defined in 2D as one now needs to exchange vectors instead of single values. Running the [`diffusion_2D_mpi.jl`](scripts/diffusion_2D_mpi.jl) will generate one output file per MPI process and the [scripts/vizme2D_mpi.jl](scripts/vizme2D_mpi.jl) script can then be used for visualisation purpose.
+Hold-on, the [`diffusion_2D_mpi.jl`](scripts/diffusion_2D_mpi.jl) code implements a 2D version of the [`diffusion_1D_mpi.jl`](scripts/diffusion_1D_mpi.jl) code. Nothing is really new in there, but it may be interesting to see how boundary update routines are defined in 2D as one now needs to exchange vectors instead of single values. Running the [`diffusion_2D_mpi.jl`](scripts/diffusion_2D_mpi.jl) will generate one output file per MPI process and the [vizme2D_mpi.jl](scripts/vizme2D_mpi.jl) script can then be used for visualisation purpose.
 
 
 ### Multi-XPU implementations in 2D
