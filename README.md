@@ -212,6 +212,7 @@ This section lists the material discussed within this 3h workshop:
 * [Part 3 - Distributed computing on multiple CPUs and GPUs](#part-3---distributed-computing-on-multiple-cpus-and-gpus)
     * [Distributed memory and fake parallelisation](#distributed-memory-and-fake-parallelisation)
     * [Distributed Julia computing using MPI](#distributed-julia-computing-using-mpi)
+    * [Multi-XPU implementations in 2D](#multi-xpu-implementations-in-2d)
 
 💡 In this workshop we will implement a 2D nonlinear diffusion equation on GPUs in Julia using the finite-difference method and an iterative solving approach.
 
@@ -581,10 +582,85 @@ So far, so good, we are now ready to write a script that would truly distribute 
 ⤴️ [_back to workshop material_](#workshop-material)
 
 ### Distributed Julia computing using MPI
+As next step, let's see what are the minimal steps that would allow us to write an MPI-parallel code in Julia. We will solve the following linear diffusion physics:
+```julia
+for it = 1:nt
+    qHx        .= -λ*diff(H)/dx
+    H[2:end-1] .= H[2:end-1] - dt*diff(qHx)/dx
+end
+```
+on multiple processors. The [`diffusion_1D_mpi.jl`](scripts/diffusion_1D_mpi.jl) code implements the following steps:
+1. Initialise MPI and set-up a Cartesian world
+2. Implement a boundary exchange routine
+3. Finalise MPI
+4. Create a "global" intial condition
+
+To (1.) initialise MPI and prepare the Cartesian world, we define:
+```julia
+MPI.Init()
+dims        = [0]
+comm        = MPI.COMM_WORLD
+nprocs      = MPI.Comm_size(comm)
+MPI.Dims_create!(nprocs, dims)
+comm_cart   = MPI.Cart_create(comm, dims, [0], 1)
+me          = MPI.Comm_rank(comm_cart)
+coords      = MPI.Cart_coords(comm_cart)
+neighbors_x = MPI.Cart_shift(comm_cart, 0, 1)
+```
+where `me` represents the process ID unique to each MPI process.
+
+Then, we need to (2.) implement a boundary exchange routine. For conciseness, we will here use blocking messages:
+```julia
+@views function update_halo(A, neighbors_x, comm)
+    if neighbors_x[1] >= 0 # MPI_PROC_NULL?
+        sendbuf = A[2]
+        recvbuf = zeros(1)
+        MPI.Send(sendbuf,  neighbors_x[1], 0, comm)
+        MPI.Recv!(recvbuf, neighbors_x[1], 1, comm)
+        A[1] = recvbuf[1]
+    end
+    if neighbors_x[2] >= 0 # MPI_PROC_NULL?
+        sendbuf = A[end-1]
+        recvbuf = zeros(1)
+        MPI.Send(sendbuf,  neighbors_x[2], 1, comm)
+        MPI.Recv!(recvbuf, neighbors_x[2], 0, comm)
+        A[end] = recvbuf[1]
+    end
+    return
+end
+```
+In a nutshell, we store the boundary values we want to exchange in a send buffer `sednbuf` and initialise a receive buffer `recvbuf`. MPI then swaps the buffers (sending messages `MPI.Send(), MPI.Recv!()`) and we have to assign to the boundary the values from the receeive buffer.
+
+Last, we need to (3.) finalise MPI prior to returning from the main
+```julia
+MPI.Finalize()
+```
+The remaining step is to (4.) create an initial Gaussian distribution of `H` that spans correctly over all local domains. This can be achieved as following:
+```julia
+x0    = coords[1]*(nx-2)*dx
+xc    = [x0 + ix*dx - dx/2 - 0.5*lx  for ix=1:nx]
+H     = exp.(.-xc.^2)
+```
+where `x0` represents the first global x-coordinate on every process and `xc` represents the local chunk of the global coordinates on each local process.
+
+Running the [`diffusion_1D_mpi.jl`](scripts/diffusion_1D_mpi.jl) code
+```sh
+HOME/.julia/bin/mpiexecjl -n 4 julia --project diffusion_1D_mpi.jl
+```
+will generate one output file for each MPI process. Use the [scripts/vizme1D_mpi.jl](scripts/vizme1D_mpi.jl) script to reconstruct the global `H` array from the local results and visualise it.
+
+Yay 🎉 - we just made a Julia parallel MPI diffusion solver in _only_ 70 lines of code.
+
+Hold-on, the [`diffusion_2D_mpi.jl`](scripts/diffusion_2D_mpi.jl) code implements a 2D version of the [`diffusion_1D_mpi.jl`](scripts/diffusion_1D_mpi.jl) code. Nothing is really new in there, but it may be interesting to see how boundary update routines are defined in 2D as one now needs to exchange vectors instead of single values. Running the [`diffusion_2D_mpi.jl`](scripts/diffusion_2D_mpi.jl) will generate one output file per MPI process and the [scripts/vizme2D_mpi.jl](scripts/vizme2D_mpi.jl) script can then be used for visualisation purpose.
 
 
-<!-- 20. Discover a concise MPI 1D heat diffusion example [/scripts/heat_1D_mpi.jl](/scripts/heat_1D_mpi.jl). Learn about the minimal requirements to initialise a Cartesian MPI topology and how to code the boundary update functions (here using blocking messages). Use the [/scripts/vizme1D_mpi.jl](/scripts/vizme1D_mpi.jl) script to visualise the results (each MPI process saving it's local output).
-21. **TODO** Yay, you have your MPI 1D Julia script running! Finalise the MPI 2D heat diffusion script [/scripts/heat_2D_mpi_tmp.jl](/scripts/heat_2D_mpi_tmp.jl) to solve the 2D diffusion equation using MPI. Use the [/scripts/vizme2D_mpi.jl](/scripts/vizme2D_mpi.jl) script to visualise the results (each MPI process saving it's local output).
+### Multi-XPU implementations in 2D
+
+
+
+
+
+<!-- 
 22. Now that you demystified distributed memory parallelisation, see how using [ImplicitGlobalGrid.jl] along with [ParallelStencil.jl] leads to concise and efficient distributed memory parallelisation on multiple _XPUs_ in 2D [/scripts/heat_2D_multixpu.jl](/scripts/heat_2D_multixpu.jl). Also, take a closer look at the [@hide_communication](https://github.com/luraess/geo-hpc-course/blob/0a722ac5f6da47779dfceadfec79b92c95e9e40e/scripts/heat_2D_multixpu.jl#L61) feature. Further infos can be found [here](https://github.com/omlins/ParallelStencil.jl#seamless-interoperability-with-communication-packages-and-hiding-communication).
 23. **TODO** Instrument the 2D shallow ice code sia_2D_xpu.jl (task 14.) to enable distributed memory parallelisation using [ImplicitGlobalGrid.jl] along with [ParallelStencil.jl].
 > 💡 Use [/solutions/sia_2D_xpu.jl](/solutions/sia_2D_xpu.jl) for a quick start, and [/solutions/sia_2D_multixpu.jl](/solutions/sia_2D_multixpu.jl) for a solution.

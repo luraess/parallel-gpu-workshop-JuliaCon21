@@ -59,7 +59,7 @@ end
         qHx        .= -λ*diff(H)/dx
         H[2:end-1] .= H[2:end-1] - dt*diff(qHx)/dx
         update_halo(H, neighbors_x, comm_cart)
-     end
+    end
     t_toc = Base.time()-t_tic
     if (me==0) @printf("Time = %1.4e s, T_eff = %1.2f GB/s \n", t_toc, round((2/1e9*nx*sizeof(lx))/(t_toc/(nt-10)), sigdigits=2)) end
     if do_save file = matopen("$(@__DIR__)/H_$(me).mat", "w"); write(file, "H", Array(H)); close(file) end
