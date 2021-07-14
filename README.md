@@ -651,21 +651,51 @@ will generate one output file for each MPI process. Use the [scripts/vizme1D_mpi
 
 Yay 🎉 - we just made a Julia parallel MPI diffusion solver in _only_ 70 lines of code.
 
-Hold-on, the [`diffusion_2D_mpi.jl`](scripts/diffusion_2D_mpi.jl) code implements a 2D version of the [`diffusion_1D_mpi.jl`](scripts/diffusion_1D_mpi.jl) code. Nothing is really new in there, but it may be interesting to see how boundary update routines are defined in 2D as one now needs to exchange vectors instead of single values. Running the [`diffusion_2D_mpi.jl`](scripts/diffusion_2D_mpi.jl) will generate one output file per MPI process and the [vizme2D_mpi.jl](scripts/vizme2D_mpi.jl) script can then be used for visualisation purpose.
+Hold-on, the [`diffusion_2D_mpi.jl`](scripts/diffusion_2D_mpi.jl) code implements a 2D version of the [`diffusion_1D_mpi.jl`](scripts/diffusion_1D_mpi.jl) code. Nothing is really new in there, but it may be interesting to see how boundary update routines are defined in 2D as one now needs to exchange vectors instead of single values. Running the [`diffusion_2D_mpi.jl`](scripts/diffusion_2D_mpi.jl) will generate one output file per MPI process and the [`vizme2D_mpi.jl`](scripts/vizme2D_mpi.jl) script can then be used for visualisation purpose.
 
+⤴️ [_back to workshop material_](#workshop-material)
 
 ### Multi-XPU implementations in 2D
+Let's do a quick recap: so far, we explored the concept of distributed memory parallelisation with simple "fake-parallel" codes. We then demystified the usage of MPI in Julia within a 1D and 2D diffusion solver using [MPI.jl], a Cartesian topology and blocking message. This code would already execute on many processors and could be launched on a cluster. 
 
+The remaining steps are to:
+- use non-blocking communication
+- use multiple GPUs
+- prevent MPI communication to become the performance killer
 
+We address these steps using [ImplicitGlobalGrid.jl] along with [ParallelStencil.jl]. As final act of this workshop we will take the high-performance XPU [`diffusion_2D_damp_perf_xpu.jl`](scripts/diffusion_2D_damp_perf_xpu.jl) code from [Part 2](#xpu-implementation) and add the few [ImplicitGlobalGrid.jl] features in order to have a multi-XPU code ready to scale on GPU supercomputers.
 
+Appreciate the few minor changes (not including those for visualisation - **10 new lines only**) required to get the multi-XPU code [`diffusion_2D_damp_perf_multixpu.jl`](scripts/diffusion_2D_damp_perf_multixpu.jl):
+```julia
+# [...] skipped lines
+using ImplicitGlobalGrid, Plots, Printf, LinearAlgebra
+import MPI
+# [...] skipped lines
+norm_g(A) = (sum2_l = sum(A.^2); sqrt(MPI.Allreduce(sum2_l, MPI.SUM, MPI.COMM_WORLD)))
+# [...] skipped lines
+me, dims = init_global_grid(nx, ny, 1)  # MPI initialisation
+@static if USE_GPU select_device() end  # select one GPU per MPI local rank (if >1 GPU per node)
+dx, dy = lx/nx_g(), ly/ny_g()           # grid size
+damp   = 1-35/nx_g()                    # damping (this is a tuning parameter, dependent on e.g. grid resolution)
+# [...] skipped lines
+H     .= Data.Array([exp(-(x_g(ix,dx,H)+dx/2 -lx/2)^2 -(y_g(iy,dy,H)+dy/2 -ly/2)^2) for ix=1:size(H,1), iy=1:size(H,2)])
+# [...] skipped lines
+len_ResH_g = ((nx-2-2)*dims[1]+2)*((ny-2-2)*dims[2]+2)
+# [...] skipped lines
+@hide_communication (8, 4) begin # communication/computation overlap
+    @parallel compute_update!(H2, dHdtau, H, Hold, _dt, damp, min_dxy2, _dx, _dy)
+    H, H2 = H2, H
+    update_halo!(H)
+end
+# [...] skipped lines
+err = norm_g(ResH)/len_ResH_g
+# [...] skipped lines
+finalize_global_grid()
+# [...] skipped lines
+```
+Running this code with `do_visu = true` will generate the following gif
 
-
-<!-- 
-22. Now that you demystified distributed memory parallelisation, see how using [ImplicitGlobalGrid.jl] along with [ParallelStencil.jl] leads to concise and efficient distributed memory parallelisation on multiple _XPUs_ in 2D [/scripts/heat_2D_multixpu.jl](/scripts/heat_2D_multixpu.jl). Also, take a closer look at the [@hide_communication](https://github.com/luraess/geo-hpc-course/blob/0a722ac5f6da47779dfceadfec79b92c95e9e40e/scripts/heat_2D_multixpu.jl#L61) feature. Further infos can be found [here](https://github.com/omlins/ParallelStencil.jl#seamless-interoperability-with-communication-packages-and-hiding-communication).
-23. **TODO** Instrument the 2D shallow ice code sia_2D_xpu.jl (task 14.) to enable distributed memory parallelisation using [ImplicitGlobalGrid.jl] along with [ParallelStencil.jl].
-> 💡 Use [/solutions/sia_2D_xpu.jl](/solutions/sia_2D_xpu.jl) for a quick start, and [/solutions/sia_2D_multixpu.jl](/solutions/sia_2D_multixpu.jl) for a solution.
-24. Yay, you made it - you demystified running Julia codes in parallel on multi-XPU :-) Q&A. -->
-
+![](docs/diffusion_2D_multixpu.gif)
 
 ⤴️ [_back to workshop material_](#workshop-material)
 
