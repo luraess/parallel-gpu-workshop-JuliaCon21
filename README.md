@@ -213,6 +213,7 @@ This section lists the material discussed within this 3h workshop:
     * [Distributed memory and fake parallelisation](#distributed-memory-and-fake-parallelisation)
     * [Distributed Julia computing using MPI](#distributed-julia-computing-using-mpi)
     * [Multi-XPU implementations in 2D](#multi-xpu-implementations-in-2d)
+    * [Advanced features](#advanced-features)
 
 💡 In this workshop we will implement a 2D nonlinear diffusion equation on GPUs in Julia using the finite-difference method and an iterative solving approach.
 
@@ -693,11 +694,17 @@ err = norm_g(ResH)/len_ResH_g
 finalize_global_grid()
 # [...] skipped lines
 ```
-Running this code with `do_visu = true` will generate the following gif
+Running [`diffusion_2D_damp_perf_multixpu.jl`](scripts/diffusion_2D_damp_perf_multixpu.jl) code with `do_visu = true` will generate the following gif (here `2048x2048` grid points on 4 GPUs)
 
 ![](docs/diffusion_2D_multixpu.gif)
 
 ⤴️ [_back to workshop material_](#workshop-material)
+
+### Advanced features
+- CUDA-aware MPI
+- `@hide_communication` communication and computation overlap
+- more
+
 
 # Further reading
 \[1\] [Omlin, S., Räss, L., Kwasniewski, G., Malvoisin, B., & Podladchikov, Y. Y. (2020). Solving Nonlinear Multi-Physics on GPU Supercomputers with Julia. JuliaCon Conference, virtual.][JuliaCon20a]
