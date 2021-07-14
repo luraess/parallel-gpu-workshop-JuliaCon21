@@ -2,7 +2,9 @@
 
 [![Build Status](https://github.com/luraess/parallel-gpu-workshop-JuliaCon21/workflows/CI/badge.svg)](https://github.com/luraess/parallel-gpu-workshop-JuliaCon21/actions)
 
-**[JuliaCon 2021 workshop | Fri, July 23, 10am-1pm ET (16:00-19:00 CEST)](https://pretalx.com/juliacon2021/featured/)**
+[**JuliaCon 2021 workshop | Fri, July 23, 10am-1pm ET (16:00-19:00 CEST)**](https://pretalx.com/juliacon2021/featured/)
+
+<!-- [**LIVE STREAM JuliaCon 2021 workshop | Fri, July 23, 10am-1pm ET (16:00-19:00 CEST)**](https://www.youtube.com/watch?v=DvlM0w6lYEY) -->
 
 👉 **Organisation notes:**
 - 💡 The workshop material (available on this repository) **was just updated - fetch the latest versions!**
@@ -306,7 +308,7 @@ t_it  = t_toc/niter                        # Execution time per iteration [s]
 T_eff = A_eff/t_it                         # Effective memory throughput [GB/s]
 # [...] skipped lines
 ```
-Running [`diffusion_2D_damp_perf.jl`](scripts/diffusion_2D_damp_perf.jl) with `nx = ny = 512`, starting Julia with `-O3 --check-bounds=no` produces following output on an Intel Quad-Core i5-4460  CPU @3.20GHz processor
+Running [`diffusion_2D_damp_perf.jl`](scripts/diffusion_2D_damp_perf.jl) with `nx = ny = 512`, starting Julia with `-O3 --check-bounds=no` produces following output on an Intel Quad-Core i5-4460  CPU @3.20GHz processor (`T_peak = 17 GB/s` measured with [`memcopy3D.jl`](extras/memcopy3D.jl)):
 ```julia-repl
 Time = 21.523 sec, T_eff = 0.39 GB/s (niter = 804)
 ```
@@ -432,7 +434,7 @@ synchronize()
 
 > ⚠ Default precision in `CUDA.jl` is `Float32`, so we have to enforce `Float64` here.
 
-Running [`diffusion_2D_damp_perf_gpu.jl`](scripts/diffusion_2D_damp_perf_gpu.jl) with `nx = ny = 8192` on an Nvidia Tesla V100 PCIe (16GB) GPU produces following output:
+Running [`diffusion_2D_damp_perf_gpu.jl`](scripts/diffusion_2D_damp_perf_gpu.jl) with `nx = ny = 8192` produces following output on an Nvidia Tesla V100 PCIe (16GB) GPU (`T_peak = 840 GB/s` measured with [`memcopy3D.jl`](extras/memcopy3D.jl)):
 ```julia-repl
 Time = 10.084 sec, T_eff = 770.00 GB/s (niter = 2904)
 ```
