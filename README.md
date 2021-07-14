@@ -578,6 +578,8 @@ The number of fake processes are stored in the second dimension of the array `H`
 
 So far, so good, we are now ready to write a script that would truly distribute calculations on different processors using [MPI.jl].
 
+⤴️ [_back to workshop material_](#workshop-material)
+
 ### Distributed Julia computing using MPI
 
 
