@@ -10,9 +10,6 @@ end
 using ImplicitGlobalGrid, Plots, Printf, LinearAlgebra
 import MPI
 
-# enable plotting by default
-if !@isdefined do_visu; do_visu = true end
-
 # global reduction
 norm_g(A) = (sum2_l = sum(A.^2); sqrt(MPI.Allreduce(sum2_l, MPI.SUM, MPI.COMM_WORLD)))
 # macros to avoid array allocation
