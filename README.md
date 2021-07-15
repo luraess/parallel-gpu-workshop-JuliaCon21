@@ -531,7 +531,7 @@ Running [`diffusion_2D_damp_xpu.jl`](scripts/diffusion_2D_damp_xpu.jl) with `nx 
 ```julia-repl
 Time = 21.420 sec, T_eff = 360.00 GB/s (niter = 2904)
 ```
-The performance is significantly less good in this case as writing fluxes to main memory could not be avoided.
+The performance is significantly less good in this case as writing fluxes to main memory could not be avoided using the more comfortable syntax. Note, however, that in many applications we do not face this issue and the perfomance of applications written using the `@parallel` macro is on pair with those written using the `@parallel_indices` macro. Future versions of ParallelStencil will enable confortable syntax using the `@parallel` macro for computing fields as these fluxes on-the-fly or for storing them on-chip. 
 
 ⤴️ [_back to workshop material_](#workshop-material)
 
