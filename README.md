@@ -367,24 +367,20 @@ for iy=1:size(dHdtau,2)
         dHdtau[ix,iy] = -(H[ix+1, iy+1] - Hold[ix+1, iy+1])/dt + 
                          (-(@qHx(ix+1,iy)-@qHx(ix,iy))/dx -(@qHy(ix,iy+1)-@qHy(ix,iy))/dy) +
                          damp*dHdtau[ix,iy]                        # damped rate of change
-    end
-end
-for iy=1:size(dHdtau,2)
-    for ix=1:size(dHdtau,1)
         H2[ix+1,iy+1] = H[ix+1,iy+1] + @dtau(ix,iy)*dHdtau[ix,iy]  # update rule, sets the BC as H[1]=H[end]=0
     end
 end
 H, H2 = H2, H  # pointer swap
 # [...] skipped lines
 ```
-> 💡 Note that macros can now take `ix` and `iy` as arguments.
+> 💡 Note that macros can now take `ix` and `iy` as arguments and that both calculations for `dHdtau`and `H` update are done within a single loop (loop fusion).
 
 Running [`diffusion_2D_damp_perf_loop.jl`](scripts/diffusion_2D_damp_perf_loop.jl) with `nx = ny = 512` produces following output:
 ```julia-repl
 Time = 4.774 sec, T_eff = 1.80 GB/s (niter = 804)
 ```
 
-The next step is to wrap these physics calculations into functions (later called kernels on the GPU) and define them before the main function of the script, resulting in the [`diffusion_2D_damp_perf_loop_fun.jl`](scripts/diffusion_2D_damp_perf_loop_fun.jl) code. Note the loop fusion in the `function compute_update!()`:
+The next step is to wrap these physics calculations into functions (later called kernels on the GPU) and define them before the main function of the script, resulting in the [`diffusion_2D_damp_perf_loop_fun.jl`](scripts/diffusion_2D_damp_perf_loop_fun.jl) code:
 ```julia
 # [...] skipped lines
 macro qHx(ix,iy)  esc(:( -(0.5*(H[$ix,$iy+1]+H[$ix+1,$iy+1]))*(0.5*(H[$ix,$iy+1]+H[$ix+1,$iy+1]))*(0.5*(H[$ix,$iy+1]+H[$ix+1,$iy+1])) * (H[$ix+1,$iy+1]-H[$ix,$iy+1])*_dx )) end
@@ -511,7 +507,7 @@ Running [`diffusion_2D_damp_perf_xpu.jl`](scripts/diffusion_2D_damp_perf_xpu.jl)
 Time = 10.323 sec, T_eff = 760.00 GB/s (niter = 2904)
 ```
 
-The alternative and "default" implementation using [ParallelStencil.jl] would allow for using macros exposed by the `FiniteDifferences2D` module for a math-close notation in the kernels:
+The 10 GB/s performance difference with the pure [CUDA.jl] version is due to the [ParallelStencil.jl]'s "comfort features" for launching kernels, as e.g. computing automatically and dynamically optimal grid and thread block sizes. If needed, these can be precomputed manually and passed to the `@parallel` launch macro (type `?@parallel` for more information). The alternative and "default" implementation using [ParallelStencil.jl] would allow for using macros exposed by the `FiniteDifferences2D` module for a math-close notation in the kernels:
 ```julia
 # [...] skipped lines
 @parallel function compute_flux!(qHx, qHy, H, _dx, _dy)
@@ -697,7 +693,7 @@ err = norm_g(ResH)/len_ResH_g
 finalize_global_grid()
 # [...] skipped lines
 ```
-Running the [`diffusion_2D_damp_perf_multixpu.jl`](scripts/diffusion_2D_damp_perf_multixpu.jl) code with `do_visu = true` generates the following gif (here `2048x2048` grid points on 4 GPUs)
+Running the [`diffusion_2D_damp_perf_multixpu.jl`](scripts/diffusion_2D_damp_perf_multixpu.jl) code with `do_visu = true` generates the following gif (here `4096x4096` grid points on 4 GPUs)
 
 ![](docs/diffusion_2D_multixpu.gif)
 
