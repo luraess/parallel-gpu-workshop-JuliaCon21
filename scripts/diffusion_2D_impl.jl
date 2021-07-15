@@ -61,4 +61,4 @@ if !@isdefined do_visu; do_visu = true end
     return xc, yc, H
 end
 
-@time diffusion_2D_impl(; do_visu=do_visu);
+diffusion_2D_impl(; do_visu=do_visu);
