@@ -2,9 +2,9 @@
 
 [![Build Status](https://github.com/luraess/parallel-gpu-workshop-JuliaCon21/workflows/CI/badge.svg)](https://github.com/luraess/parallel-gpu-workshop-JuliaCon21/actions)
 
-[**JuliaCon 2021 workshop | Fri, July 23, 10am-1pm ET (16:00-19:00 CEST)**](https://pretalx.com/juliacon2021/featured/)
+[**JuliaCon 2021 workshop | Fri, July 23, 10am-1pm ET (16:00-19:00 CEST)**](https://pretalx.com/juliacon2021/talk/review/NDHRHLYN7JZUV88PLFWPL99P93NQVU8K)
 
-<!-- [**LIVE STREAM JuliaCon 2021 workshop | Fri, July 23, 10am-1pm ET (16:00-19:00 CEST)**](https://www.youtube.com/watch?v=DvlM0w6lYEY) -->
+[**👀 Workshop LIVE STREAM**](https://www.youtube.com/watch?v=DvlM0w6lYEY)
 
 👉 **Organisation notes:**
 - 💡 The workshop material (available on this repository) **was just updated - fetch the latest versions!**
@@ -654,6 +654,8 @@ Yay 🎉 - we just made a Julia parallel MPI diffusion solver in _only_ 70 lines
 
 Hold-on, the [`diffusion_2D_mpi.jl`](scripts/diffusion_2D_mpi.jl) code implements a 2D version of the [`diffusion_1D_mpi.jl`](scripts/diffusion_1D_mpi.jl) code. Nothing is really new in there, but it may be interesting to see how boundary update routines are defined in 2D as one now needs to exchange vectors instead of single values. Running the [`diffusion_2D_mpi.jl`](scripts/diffusion_2D_mpi.jl) will generate one output file per MPI process and the [`vizme2D_mpi.jl`](scripts/vizme2D_mpi.jl) script can then be used for visualisation purpose.
 
+_Note: The presented concise Julia MPI scripts are inspired from [this 2D python script](https://github.com/omlins/adios2-tutorial/blob/main/example/mpi_diffusion2D.py)._
+
 ⤴️ [_back to workshop material_](#workshop-material)
 
 ### Multi-XPU implementations in 2D
@@ -666,7 +668,7 @@ The remaining steps are to:
 
 We address these steps using [ImplicitGlobalGrid.jl] along with [ParallelStencil.jl]. As final act of this workshop we will take the high-performance XPU [`diffusion_2D_damp_perf_xpu.jl`](scripts/diffusion_2D_damp_perf_xpu.jl) code from [Part 2](#xpu-implementation) and add the few [ImplicitGlobalGrid.jl] features in order to have a multi-XPU code ready to scale on GPU supercomputers.
 
-Appreciate the few minor changes (not including those for visualisation - **10 new lines only**) required to get the multi-XPU code [`diffusion_2D_damp_perf_multixpu.jl`](scripts/diffusion_2D_damp_perf_multixpu.jl):
+Appreciate the few minor changes -**10 new lines only**- (not including those for visualisation) required to get the multi-XPU code [`diffusion_2D_damp_perf_multixpu.jl`](scripts/diffusion_2D_damp_perf_multixpu.jl):
 ```julia
 # [...] skipped lines
 using ImplicitGlobalGrid, Plots, Printf, LinearAlgebra
@@ -694,16 +696,29 @@ err = norm_g(ResH)/len_ResH_g
 finalize_global_grid()
 # [...] skipped lines
 ```
-Running [`diffusion_2D_damp_perf_multixpu.jl`](scripts/diffusion_2D_damp_perf_multixpu.jl) code with `do_visu = true` will generate the following gif (here `2048x2048` grid points on 4 GPUs)
+Running the [`diffusion_2D_damp_perf_multixpu.jl`](scripts/diffusion_2D_damp_perf_multixpu.jl) code with `do_visu = true` generates the following gif (here `2048x2048` grid points on 4 GPUs)
 
 ![](docs/diffusion_2D_multixpu.gif)
+
+So, here we are. We have a Julia GPU MPI code to resolve nonlinear diffusion processes in 2D using a second order accelerated iterative scheme and can run it on GPU supercomputers 🎉.
 
 ⤴️ [_back to workshop material_](#workshop-material)
 
 ### Advanced features
-- CUDA-aware MPI
-- `@hide_communication` communication and computation overlap
-- more
+This last section provides directions and details on more advanced features.
+
+- The approach and tools presented in this workshop are not restricted to 2D calculation. If you have interests in 3D examples, check out the [miniapps](https://github.com/omlins/ParallelStencil.jl#concise-singlemulti-xpu-miniapps) section from the [ParallelStencil.jl] README. The [miniapps](https://github.com/omlins/ParallelStencil.jl#concise-singlemulti-xpu-miniapps) section provides also additional information:
+    - about the `T_eff` metric;
+    - on how to run MPI GPU applications on different hardware.
+
+- [ImplicitGlobalGrid.jl] supports CUDA-aware MPI, i.e., upon exporting the ENV variable `IGG_CUDAAWARE_MPI=1`, device (GPU) pointers can be directly exchanged by MPI bypassing extra buffer copies to the CPU for enhanced performance.
+
+- In combination with [ImplicitGlobalGrid.jl], [ParallelStencil.jl] exposes a hiding communication feature accessible through the [`@hide_communication`](https://github.com/luraess/geo-hpc-course/blob/0a722ac5f6da47779dfceadfec79b92c95e9e40e/scripts/heat_2D_multixpu.jl#L61) macro. This macro allows to define a boundary width applied to each local domain in order to split the computation such that:
+    1. The boundary cells are first computed
+    2. The MPI communication (boundary exchange procedure) can start
+    3. The remaining inner points are computed while boundary exchange is on-going.
+
+    Further infos can be found [here](https://github.com/omlins/ParallelStencil.jl#seamless-interoperability-with-communication-packages-and-hiding-communication).
 
 
 # Further reading
