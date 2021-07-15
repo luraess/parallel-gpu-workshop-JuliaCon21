@@ -7,28 +7,28 @@ if !@isdefined do_save; do_save = true end
 
 # MPI functions
 @views function update_halo(A, neighbors_x, neighbors_y, comm)
-    if neighbors_x[1] >= 0 # MPI_PROC_NULL?
+    if neighbors_x[1] != MPI.MPI_PROC_NULL
         sendbuf = A[2,:]
         recvbuf = zeros(size(A[1,:]))
         MPI.Send(sendbuf,  neighbors_x[1], 0, comm)
         MPI.Recv!(recvbuf, neighbors_x[1], 1, comm)
         A[1,:] = recvbuf
     end
-    if neighbors_x[2] >= 0 # MPI_PROC_NULL?
+    if neighbors_x[2] != MPI.MPI_PROC_NULL
         sendbuf = A[end-1,:]
         recvbuf = zeros(size(A[end,:]))
         MPI.Send(sendbuf,  neighbors_x[2], 1, comm)
         MPI.Recv!(recvbuf, neighbors_x[2], 0, comm)
         A[end,:] = recvbuf
     end
-    if neighbors_y[1] >= 0 # MPI_PROC_NULL?
+    if neighbors_y[1] != MPI.MPI_PROC_NULL
         sendbuf = A[:,2]
         recvbuf = zeros(size(A[:,1]))
         MPI.Send(sendbuf,  neighbors_y[1], 2, comm)
         MPI.Recv!(recvbuf, neighbors_y[1], 3, comm)
         A[:,1] = recvbuf
     end
-    if neighbors_y[2] >= 0 # MPI_PROC_NULL?
+    if neighbors_y[2] != MPI.MPI_PROC_NULL
         sendbuf = A[:,end-1]
         recvbuf = zeros(size(A[:,end]))
         MPI.Send(sendbuf,  neighbors_y[2], 3, comm)

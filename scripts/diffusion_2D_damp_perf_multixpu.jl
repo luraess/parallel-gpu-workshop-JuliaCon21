@@ -51,7 +51,7 @@ end
     tol    = 1e-6         # tolerance
     itMax  = 1e5          # max number of iterations
     # Derived numerics
-    me, dims = init_global_grid(nx, ny, 1)  # MPI initialisation
+    me, dims = init_global_grid(nx, ny, 1)  # Initialization of MPI and more...
     @static if USE_GPU select_device() end  # select one GPU per MPI local rank (if >1 GPU per node)
     dx, dy = lx/nx_g(), ly/ny_g()           # grid size
     damp   = 1-35/nx_g()                    # damping (this is a tuning parameter, dependent on e.g. grid resolution)

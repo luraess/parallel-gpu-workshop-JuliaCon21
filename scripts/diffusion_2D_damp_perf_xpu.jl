@@ -21,7 +21,7 @@ macro dtau(ix,iy) esc(:(  (1.0/(min_dxy2 / (H[$ix+1,$iy+1]*H[$ix+1,$iy+1]*H[$ix+
     if (ix<=size(dHdtau,1) && iy<=size(dHdtau,2)) dHdtau[ix,iy] = -(H[ix+1, iy+1] - Hold[ix+1, iy+1])*_dt + 
                                                                    (-(@qHx(ix+1,iy)-@qHx(ix,iy))*_dx -(@qHy(ix,iy+1)-@qHy(ix,iy))*_dy) +
                                                                    damp*dHdtau[ix,iy] end                       # damped rate of change
-    if (ix<=size(dHdtau,1) && iy<=size(dHdtau,2)) H2[ix+1,iy+1] = H[ix+1,iy+1] + @dtau(ix,iy)*dHdtau[ix,iy] end # update rule, sets the BC as H[1]=H[end]=0
+    if (ix<=size(dHdtau,1) && iy<=size(dHdtau,2)) H2[ix+1,iy+1] = H[ix+1,iy+1] + @dtau(ix,iy)*dHdtau[ix,iy] end # update rule, sets the BC implicitly as H[1]=H[end]=0
     return
 end
 
