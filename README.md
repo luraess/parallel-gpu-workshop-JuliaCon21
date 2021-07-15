@@ -28,9 +28,9 @@ This workshop covers trendy areas in modern numerical computing with examples fr
 
 
 # Objectives
-The goal of this workshop is to offer an interactive hands-on to solve systems of differential equations in parallel on GPUs using the [ParallelStencil.jl] and [ImplicitGlobalGrid.jl] Julia packages. [ParallelStencil.jl] permits to write architecture-agnostic parallel high-performance GPU and CPU code and [ImplicitGlobalGrid.jl] renders stencil-based distributed parallelization almost trivial. The resulting codes are fast, short and readable \[[1][JuliaCon20a], [2][JuliaCon20b], [3][JuliaCon19]\].
+The goal of this workshop is to offer an interactive hands-on to solve systems of differential equations in parallel on GPUs using the [ParallelStencil.jl] and [ImplicitGlobalGrid.jl] Julia packages. [ParallelStencil.jl] permits to write architecture-agnostic parallel high-performance GPU and CPU code for stencil computations and [ImplicitGlobalGrid.jl] renders its distributed parallelization almost trivial. The resulting codes are fast, short and readable \[[1][JuliaCon20a], [2][JuliaCon20b], [3][JuliaCon19]\].
 
-We will use these two Julia packages to design and implement an iterative nonlinear diffusion solver. We will, in a second step, turn the serial CPU solver into a parallel application to run on multiple CPU threads and on GPUs. We will, in a third step, tackle distributed memory computing porting the nonlinear diffusion solver to execute on multiple CPUs and GPUs. The nonlinear diffusion solver we will work on can be applied to resolve the shallow ice approximation (SIA) equations with applications that predict ice flow dynamics over mountainous Greenland topography (Fig. below). 
+We will use these two Julia packages to design and implement an iterative nonlinear diffusion solver. We will, in a second step, turn the serial CPU solver into a parallel application to run on multiple CPU threads and on GPUs. We will, in a third step, do distributed memory computing, enhancing the nonlinear diffusion solver to execute on multiple CPUs and GPUs. The nonlinear diffusion solver we will work on can be applied to resolve the shallow ice approximation (SIA) equations with applications that predict ice flow dynamics over mountainous Greenland topography (Fig. below). 
 
 ![Greenland ice cap](docs/greenland_1.png)
 
@@ -43,7 +43,7 @@ We will use these two Julia packages to design and implement an iterative nonlin
 
 By the end of this workshop, you will:
 - Have high-performance nonlinear PDE GPU solvers;
-- Have a Julia code that achieves similar performance than legacy codes (C, CUDA, MPI);
+- Have a Julia code that achieves similar performance than legacy codes (C/CUDA C + MPI);
 - Be able to leverage the computing power of modern GPU accelerated servers and supercomputers.
 
 ⤴️ [_back to content_](#content)
@@ -113,7 +113,7 @@ julia --project
 3. From VS Code, follow the [instructions from the documentation](https://www.julia-vscode.org/docs/stable/gettingstarted/) to get started.
 
 ### Packages installation
-Now that you launched Julia, you should be in the [Julia REPL]. You need to ensure all the packages you need to be installed before using them. To do so, enter the [Pkg mode](https://docs.julialang.org/en/v1/stdlib/REPL/#Pkg-mode) by typing `]`. Then, `instantiate` the project which should trigger the download of the packages (`st` lists the package status). Exit the Pkg mode with `Ctrl-c`:
+Now that you launched Julia, you should be in the [Julia REPL]. You need to ensure all the packages you need are installed before using them. To do so, enter the [Pkg mode](https://docs.julialang.org/en/v1/stdlib/REPL/#Pkg-mode) by typing `]`. Then, `instantiate` the project which should trigger the download of the packages (`st` lists the package status). Exit the Pkg mode with `Ctrl-c`:
 ```julia-repl
 julia> ]
 
@@ -157,8 +157,8 @@ export JULIA_CUDA_USE_BINARYBUILDER=false
 ```
 
 ## Julia MPI
-The following steps permit you to install [MPI.jl] on your machine and test the it:
-1. Julia MPI being a dependency of this Julia project [MPI.jl] should have been added upon executin `instantiate` command from within the package manager [see here](#packages-installation). 
+The following steps permit you to install [MPI.jl] on your machine and test it:
+1. Julia MPI being a dependency of this Julia project [MPI.jl] should have been added upon executing the `instantiate` command from within the package manager [see here](#packages-installation). 
 
 2. Install `mpiexecjl`:
 ```julia-repl
@@ -172,7 +172,7 @@ julia> MPI.install_mpiexecjl()
 
 4. Running a Julia MPI code `<my_script.jl>` on `np` processes:
 ```sh
-$ HOME/.julia/bin/mpiexecjl -n np julia --project <my_script.jl>
+$ mpiexecjl -n np julia --project <my_script.jl>
 ```
 
 5. To test the Julia MPI installation, launch the [`hello_mpi.jl`](extras/hello_mpi.jl) using the Julia MPI wrapper `mpiexecjl` (located in `~/.julia/bin`) on 4 processes:
@@ -204,7 +204,7 @@ This section lists the material discussed within this 3h workshop:
     * [Diffusion equation](#diffusion-equation)
     * [Iterative solvers](#iterative-solvers)
     * [Performance considerations](#performance-considerations)
-* [Part 2 - Parallel and GPU computing](#part-2---parallel-and-gpu-computing)
+* [Part 2 - Parallel CPU and GPU computing](#part-2---parallel-and-gpu-computing)
     * [Parallel CPU implementation](#parallel-cpu-implementation)
     * [GPU implementation](#gpu-implementation)
     * [XPU implementation](#xpu-implementation)
@@ -267,7 +267,7 @@ It works, but the "naive" _Picard_ iteration count seems to be pretty high (`nit
 ```md
 dHdt = ResH + damp*dHdt
 ```
-The [`diffusion_2D_damp.jl`](scripts/diffusion_2D_damp.jl) code implements a damped iterative implicit solution of eq. (1). The iteration count drops to `niter<200`. This second order pseudo-transient approach enables the iteration count to scales close to _O(N)_ and not _O(N^2)_; we will do a scaling test at the end of Part 2 in [Performance and scaling](#performance-and-scaling) section.
+The [`diffusion_2D_damp.jl`](scripts/diffusion_2D_damp.jl) code implements a damped iterative implicit solution of eq. (1). The iteration count drops to `niter<200`. This second order pseudo-transient approach enables the iteration count to scale close to _O(N)_ and not _O(N^2)_; we will do a scaling test at the end of Part 2 in [Performance and scaling](#performance-and-scaling) section.
 
 ![](docs/diff2D_damp.png)
 
@@ -288,14 +288,14 @@ We just achieved (1.) with the implicit damped approach. Let's fix (2.).
 
 Many-core processors as GPUs are throughput-oriented systems that use their massive parallelism to hide latency. On the scientific application side, most algorithms require only a few operations or flops compared to the amount of numbers or bytes accessed from main memory, and thus are significantly memory bound; the Flop/s metric is no longer the most adequate for reporting performance. This status motivated the development of a memory throughput-based performance evaluation metric, `T_eff`, to evaluate the performance of iterative stencil-based solvers \[[1][JuliaCon20a]\].
 
-The effective memory access, `A_eff` [GB], is the the sum of twice the memory footprint of the unknown fields, `D_u`, (fields that depend on their own history and that need to be updated every iteration) and the known fields, `D_k`, that do not change in time. The effective memory access divided by the execution time per iteration, `t_it` [sec], defines the effective memory throughput, `T_eff` [GB/s].
+The effective memory access, `A_eff` [GB], is the the sum of twice the memory footprint of the unknown fields, `D_u`, (fields that depend on their own history and that need to be updated every iteration) and the known fields, `D_k`, (fields that do not change every iteration). The effective memory access divided by the execution time per iteration, `t_it` [sec], defines the effective memory throughput, `T_eff` [GB/s].
 
 ```md
 A_eff = 2 D_u + D_k
 T_eff = A_eff/t_it
 ```
 
-The upper bound of `T_eff` is `T_peak`. Defining the `T_eff` metric, we assume that 1) we evaluate an iterative stencil-based solver, 2) the problem size is much larger than the cache sizes and 3) we do not rely on time blocking (reasonable assumption for real-world applications). An important concept is not to include fields within the effective memory access that do not depend on their own history (e.g. fluxes); such fields can be re-computed on the fly or stored on-chip.
+The theoretical upper bound of `T_eff` is `T_peak`, the hardware's peak memory throughput. Defining the `T_eff` metric, we assume that 1) we evaluate an iterative stencil-based solver, 2) the problem size is much larger than the cache sizes and 3) we do not use time blocking (reasonable assumption for real-world applications). An important concept is not to include fields within the effective memory access that do not depend on their own history (e.g. fluxes); such fields can be re-computed on the fly or stored on-chip.
 
 Fore more details, check out the [performance related section](https://github.com/omlins/ParallelStencil.jl#performance-metric) from [ParallelStencil.jl].
 
@@ -307,8 +307,8 @@ Let's implement this measure in the following scripts.
 
 ⤴️ [_back to workshop material_](#workshop-material)
 
-## Part 2 - Parallel and GPU computing
-In this second part of the workshop, we will port the [`diffusion_2D_damp.jl`](scripts/diffusion_2D_damp.jl) script implemented using Julia CPU array broadcasting to parallel CPU and high-performance GPU implementations. 
+## Part 2 - Parallel CPU and GPU computing
+In this second part of the workshop, we will port the [`diffusion_2D_damp.jl`](scripts/diffusion_2D_damp.jl) script implemented using Julia CPU array broadcasting to high-performance parallel CPU and GPU implementations. 
 ```julia
 # [...] skipped lines
 qHx    .= -av_xi(H).^npow.*diff(H[:,2:end-1], dims=1)/dx  # flux
@@ -320,12 +320,12 @@ dtau   .= (1.0./(min(dx, dy)^2 ./inn(H).^npow./4.1) .+ 1.0/dt).^-1  # time step 
 H[2:end-1,2:end-1] .= inn(H) .+ dtau.*dHdtau              # update rule, sets the BC as H[1]=H[end]=0
 # [...] skipped lines
 ```
-The first step is to modify this script in order to make it more suited for performance testing. In the resulting [`diffusion_2D_damp_perf.jl`](scripts/diffusion_2D_damp_perf.jl) we:
+In the first step towards this goal we:
 - replace the non-necessary array allocation by macros
-- introduce `H2` array to avoid race conditions
+- introduce a `H2` array to avoid race conditions
 - use non-allocating `diff` operators: `LazyArrays: Diff`
 - add accurate timing of the main loop and `T_eff` reporting
-resulting in the following code:
+This results in the following code (c.f. [`diffusion_2D_damp_perf.jl`](scripts/diffusion_2D_damp_perf.jl)):
 ```julia
 using LazyArrays
 using LazyArrays: Diff
@@ -409,7 +409,7 @@ min_dxy2 = min(dx,dy)^2
 compute_update!(H2, dHdtau, H, Hold, _dt, damp, min_dxy2, _dx, _dy)
 # [...] skipped lines
 ```
-> 💡 Note that the outer loop (over `iy`) can be vectorized using multi-threading capabilities of the CPU accessible via `Threads.@threads` (see [Getting started](#getting-started) for more infos).
+> 💡 Note that the outer loop (over `iy`) can be parallelized using multi-threading capabilities of the CPU accessible via `Threads.@threads` (see [Getting started](#getting-started) for more infos).
 
 Running [`diffusion_2D_damp_perf_loop_fun.jl`](scripts/diffusion_2D_damp_perf_loop_fun.jl) with `nx = ny = 512` on 4 cores produces following output:
 ```julia-repl
@@ -426,9 +426,9 @@ We are now ready to move to the GPU !
 ⤴️ [_back to workshop material_](#workshop-material)
 
 ### GPU implementation
-So we now have a cool iterative and implicit nonlinear diffusion solver in less than 100 lines of code 🎉. Good enough for mid-resolution calculations. What if we need higher resolution and faster time to solution ? GPU computing makes it possible to go beyond 16 GB/s. Let's slightly modify the [`diffusion_2D_damp_perf_loop_fun.jl`](scripts/diffusion_2D_damp_perf_loop_fun.jl) code to enable GPU execution.
+So we now have a cool iterative and implicit nonlinear diffusion solver in less than 100 lines of code 🎉. Good enough for mid-resolution calculations. What if we need higher resolution and faster time to solution ? GPU computing makes it possible to go way beyond the so far achieved T_eff of 8.8 GB/s with my consumer eletronics notebook CPU. Let's slightly modify the [`diffusion_2D_damp_perf_loop_fun.jl`](scripts/diffusion_2D_damp_perf_loop_fun.jl) code to enable GPU execution.
 
-The main idea of GPU parallelisation is to calculate each grid point concurrently by a different GPU thread (instead of the more serial CPU execution) as depicted hereafter:
+The main idea of the applied GPU parallelisation is to calculate each grid point concurrently by a different GPU thread (instead of the more serial CPU execution) as depicted hereafter:
 
 ![](docs/cpu_gpu.png)
 
@@ -437,7 +437,7 @@ The main change is to replace the (multi-threaded) loops by a vectorised GPU ind
 ix = (blockIdx().x-1) * blockDim().x + threadIdx().x
 iy = (blockIdx().y-1) * blockDim().y + threadIdx().y
 ```
-specific to GPU execution. Each `ix` and `iy` are then executed concurrently by a different GPU thread. Also, whether a grid point has to participate in the calculation or not can no longer be defined by the loop range, but needs to be handled locally to each thread by e.g. an `if`condition, resulting in the following [`diffusion_2D_damp_perf_gpu.jl`](scripts/diffusion_2D_damp_perf_gpu.jl) GPU code:
+specific to GPU execution. Each `ix` and `iy` are then executed concurrently by a different GPU thread. Also, whether a grid point has to participate in the calculation or not can no longer be defined by the loop range, but needs to be handled locally to each thread by e.g. an `if`-condition, resulting in the following [`diffusion_2D_damp_perf_gpu.jl`](scripts/diffusion_2D_damp_perf_gpu.jl) GPU code:
 ```julia
 using CUDA
 # [...] skipped lines
@@ -469,11 +469,11 @@ cublocks  = (GRIDX,  GRIDY,  1)
 synchronize()
 # [...] skipped lines
 ```
-> 💡 We use `@cuda blocks=cublocks threads=cuthreads` to launch the GPU function on the appropriate number of threads, i.e. "parallel workers". The numerical grid resolution `nx` and `ny` must now be chosen accordingly to the number of parallel workers. Also, note that we need to run a higher resolution in order to saturate the GPU memory bandwidth and get relevant performance measure.
+> 💡 We use `@cuda blocks=cublocks threads=cuthreads` to launch the GPU kernel on the appropriate number of threads, i.e. "parallel workers". The numerical grid resolution `nx` and `ny` must now be chosen accordingly to the number of parallel workers. Also, note that we need to run a higher resolution in order to saturate the GPU memory bandwidth and get relevant performance measure.
 
 > ⚠ Default precision in `CUDA.jl` is `Float32`, so we have to enforce `Float64` here.
 
-Running [`diffusion_2D_damp_perf_gpu.jl`](scripts/diffusion_2D_damp_perf_gpu.jl) with `nx = ny = 8192` produces following output on an Nvidia Tesla V100 PCIe (16GB) GPU (`T_peak = 840 GB/s` measured with [`memcopy3D.jl`](extras/memcopy3D.jl)):
+Running [`diffusion_2D_damp_perf_gpu.jl`](scripts/diffusion_2D_damp_perf_gpu.jl) with `nx = ny = 8192` produces the following output on an Nvidia Tesla V100 PCIe (16GB) GPU (`T_peak = 840 GB/s` measured with [`memcopy3D.jl`](extras/memcopy3D.jl)):
 ```julia-repl
 Time = 10.084 sec, T_eff = 770.00 GB/s (niter = 2904)
 ```
@@ -482,7 +482,7 @@ So - that rocks 🚀
 ⤴️ [_back to workshop material_](#workshop-material)
 
 ### XPU implementation
-Let's do a rapid recap; So far we have two performant codes, one CPU-based, the other GPU-based, to solve the nonlinear and implicit diffusion equation in 2D. Wouldn't it be great to have single code that enables both ? The answer is [ParallelStencil.jl] which enables a backend independent syntax implementing parallel stencil kernels to execute on XPUs. The [`diffusion_2D_damp_perf_xpu.jl`](scripts/diffusion_2D_damp_perf_xpu.jl) code uses [ParallelStencil.jl] to combine [`diffusion_2D_damp_perf_gpu.jl`](scripts/diffusion_2D_damp_perf_gpu.jl) and [`diffusion_2D_damp_perf_loop_fun.jl`](scripts/diffusion_2D_damp_perf_loop_fun.jl) into a single code. Backend can be chosen by the `USE_GPU` flag. Using the `parallel_indices` permits to avoid explicit flux calculations:
+Let's do a rapid recap; so far we have two performant codes, one CPU-based, the other GPU-based, to solve the nonlinear and implicit diffusion equation in 2D. Wouldn't it be great to have single code that enables both ? The answer is [ParallelStencil.jl] which enables a backend independent syntax implementing parallel stencil kernels to execute on XPUs. The [`diffusion_2D_damp_perf_xpu.jl`](scripts/diffusion_2D_damp_perf_xpu.jl) code uses [ParallelStencil.jl] to combine [`diffusion_2D_damp_perf_gpu.jl`](scripts/diffusion_2D_damp_perf_gpu.jl) and [`diffusion_2D_damp_perf_loop_fun.jl`](scripts/diffusion_2D_damp_perf_loop_fun.jl) into a single code. Backend can be chosen by the `USE_GPU` flag. Using the `parallel_indices` permits to avoid storing the fluxes to main memory:
 ```julia
 const USE_GPU = true
 using ParallelStencil
@@ -497,14 +497,14 @@ end
     if (ix<=size(dHdtau,1) && iy<=size(dHdtau,2)) dHdtau[ix,iy] = -(H[ix+1, iy+1] - Hold[ix+1, iy+1])*_dt + 
                                                                    (-(@qHx(ix+1,iy)-@qHx(ix,iy))*_dx -(@qHy(ix,iy+1)-@qHy(ix,iy))*_dy) +
                                                                    damp*dHdtau[ix,iy] end                       # damped rate of change
-    if (ix<=size(dHdtau,1) && iy<=size(dHdtau,2)) H2[ix+1,iy+1] = H[ix+1,iy+1] + @dtau(ix,iy)*dHdtau[ix,iy] end # update rule, sets the BC as H[1]=H[end]=0
+    if (ix<=size(dHdtau,1) && iy<=size(dHdtau,2)) H2[ix+1,iy+1] = H[ix+1,iy+1] + @dtau(ix,iy)*dHdtau[ix,iy] end # update rule, sets the BC implicitly as H[1]=H[end]=0
     return
 end
 # [...] skipped lines
 @parallel compute_update!(H2, dHdtau, H, Hold, _dt, damp, min_dxy2, _dx, _dy)
 # [...] skipped lines
 ```
-> 💡 Note that CPU backend of [ParallelStencil.jl] currently supports `Threads.@threads`.
+> 💡 Note that [ParallelStencil.jl] currently supports `Threads.@threads` and `CUDA.jl` as backends.
 
 Running [`diffusion_2D_damp_perf_xpu.jl`](scripts/diffusion_2D_damp_perf_xpu.jl) with `nx = ny = 8192` on an Nvidia Tesla V100 PCIe (16GB) GPU produces following output:
 ```julia-repl
@@ -531,6 +531,7 @@ Running [`diffusion_2D_damp_xpu.jl`](scripts/diffusion_2D_damp_xpu.jl) with `nx 
 ```julia-repl
 Time = 21.420 sec, T_eff = 360.00 GB/s (niter = 2904)
 ```
+The performance is significantly less good in this case as writing fluxes to main memory could not be avoided.
 
 ⤴️ [_back to workshop material_](#workshop-material)
 
@@ -546,7 +547,7 @@ Note that `T_peak` of the Nvidia Tesla V100 GPU is 840 GB/s. Our GPU code thus a
 ⤴️ [_back to workshop material_](#workshop-material)
 
 ## Part 3 - Distributed computing on multiple CPUs and GPUs
-In this last part of the workshop, we will explore multi-XPU capabilities. This will enable our codes to run on multiple CPUs and GPUs in order to scale on modern multi-GPU nodes, clusters and supercomputers. Also, we will experiment with basic concepts of distributed memory computing approach using Julia's MPI wrapper [MPI.jl]. In the proposed approach, each MPI process handles one CPU thread. In the MPI GPU case (multi-GPUs), each MPI process handles one GPU. The [Getting started](#getting-started) section contains useful information in the **Julia MPI** section to get you set up.
+In this last part of the workshop, we will explore multi-XPU capabilities. This will enable our codes to run on multiple CPUs and GPUs in order to scale on modern multi-GPU nodes, clusters and supercomputers. Also, we will experiment with basic concepts of the distributed memory computing approach using Julia's MPI wrapper [MPI.jl]. In the proposed approach, each MPI process handles one CPU thread. In the MPI GPU case (multi-GPUs), each MPI process handles one GPU. The [Getting started](#getting-started) section contains useful information in the **Julia MPI** section to get you set up.
 
 ### Distributed memory and fake parallelisation
 As a first step, we will look at the [`diffusion_1D_2procs.jl`](scripts/diffusion_1D_2procs.jl) code that solves the linear diffusion equations using a "fake-parallelisation" approach. We split the calculation on two distinct left and right domains, which requires left and right `H` arrays, `HL` and `HR`, respectively:
@@ -576,7 +577,7 @@ for ip = 1:np # global picture
     Hg[i1:i1+nx-2] .= H[1:end-1,ip]
 end
 ```
-The number of fake processes are stored in the second dimension of the array `H`. The `# update boundaries` steps are adapted accordingly. All the physical calculations happen on the local chunks of the arrays. We only need "global" knowledge in the definition of the initial condition, in order to e.g. initialise the Gaussian distribution using global and not local coordinates.
+The array `H` contains now `n` local domains where each domain belongs to one fake process, namely the fake process indicated by the second index of H (`ip`). The `# update boundaries` steps are adapted accordingly. All the physical calculations happen on the local chunks of the arrays. We only need "global" knowledge in the definition of the initial condition, in order to e.g. initialise the Gaussian distribution using global and not local coordinates.
 
 So far, so good, we are now ready to write a script that would truly distribute calculations on different processors using [MPI.jl].
 
@@ -591,12 +592,12 @@ for it = 1:nt
 end
 ```
 on multiple processors. The [`diffusion_1D_mpi.jl`](scripts/diffusion_1D_mpi.jl) code implements the following steps:
-1. Initialise MPI and set-up a Cartesian world
+1. Initialise MPI and set-up a Cartesian communicator
 2. Implement a boundary exchange routine
 3. Finalise MPI
 4. Create a "global" initial condition
 
-To (1.) initialise MPI and prepare the Cartesian world, we define:
+To (1.) initialise MPI and prepare the Cartesian communicator, we define:
 ```julia
 MPI.Init()
 dims        = [0]
@@ -613,14 +614,14 @@ where `me` represents the process ID unique to each MPI process.
 Then, we need to (2.) implement a boundary exchange routine. For conciseness, we will here use blocking messages:
 ```julia
 @views function update_halo(A, neighbors_x, comm)
-    if neighbors_x[1] >= 0 # MPI_PROC_NULL?
+    if neighbors_x[1] != MPI.MPI_PROC_NULL
         sendbuf = A[2]
         recvbuf = zeros(1)
         MPI.Send(sendbuf,  neighbors_x[1], 0, comm)
         MPI.Recv!(recvbuf, neighbors_x[1], 1, comm)
         A[1] = recvbuf[1]
     end
-    if neighbors_x[2] >= 0 # MPI_PROC_NULL?
+    if neighbors_x[2] != MPI.MPI_PROC_NULL
         sendbuf = A[end-1]
         recvbuf = zeros(1)
         MPI.Send(sendbuf,  neighbors_x[2], 1, comm)
@@ -630,7 +631,7 @@ Then, we need to (2.) implement a boundary exchange routine. For conciseness, we
     return
 end
 ```
-In a nutshell, we store the boundary values we want to exchange in a send buffer `sendbuf` and initialise a receive buffer `recvbuf`. MPI then swaps the buffers (sending messages `MPI.Send(), MPI.Recv!()`) and we have to assign to the boundary the values from the receive buffer.
+In a nutshell, we store the boundary values we want to exchange in a send buffer `sendbuf` and initialise a receive buffer `recvbuf`; then, we send the content of `sendbuf` to the neighbor (sending messages `MPI.Send(), MPI.Recv!()`); finally, we assign to the boundary the values from the receive buffer.
 
 Last, we need to (3.) finalise MPI prior to returning from the main
 ```julia
@@ -666,9 +667,9 @@ The remaining steps are to:
 - use multiple GPUs
 - prevent MPI communication to become the performance killer
 
-We address these steps using [ImplicitGlobalGrid.jl] along with [ParallelStencil.jl]. As final act of this workshop we will take the high-performance XPU [`diffusion_2D_damp_perf_xpu.jl`](scripts/diffusion_2D_damp_perf_xpu.jl) code from [Part 2](#xpu-implementation) and add the few [ImplicitGlobalGrid.jl] features in order to have a multi-XPU code ready to scale on GPU supercomputers.
+We address these steps using [ImplicitGlobalGrid.jl] along with [ParallelStencil.jl]. As final act of this workshop we will take the high-performance XPU [`diffusion_2D_damp_perf_xpu.jl`](scripts/diffusion_2D_damp_perf_xpu.jl) code from [Part 2](#xpu-implementation) and add the few required [ImplicitGlobalGrid.jl] functions in order to have a multi-XPU code ready to scale on GPU supercomputers.
 
-Appreciate the few minor changes -**10 new lines only**- (not including those for visualisation) required to get the multi-XPU code [`diffusion_2D_damp_perf_multixpu.jl`](scripts/diffusion_2D_damp_perf_multixpu.jl):
+Appreciate the few minor changes -**10 new lines only**- (not including those for visualisation) required turn the single-XPU code into a multi-XPU code [`diffusion_2D_damp_perf_multixpu.jl`](scripts/diffusion_2D_damp_perf_multixpu.jl):
 ```julia
 # [...] skipped lines
 using ImplicitGlobalGrid, Plots, Printf, LinearAlgebra
@@ -676,7 +677,7 @@ import MPI
 # [...] skipped lines
 norm_g(A) = (sum2_l = sum(A.^2); sqrt(MPI.Allreduce(sum2_l, MPI.SUM, MPI.COMM_WORLD)))
 # [...] skipped lines
-me, dims = init_global_grid(nx, ny, 1)  # MPI initialisation
+me, dims = init_global_grid(nx, ny, 1)  # Initialization of MPI and more...
 @static if USE_GPU select_device() end  # select one GPU per MPI local rank (if >1 GPU per node)
 dx, dy = lx/nx_g(), ly/ny_g()           # grid size
 damp   = 1-35/nx_g()                    # damping (this is a tuning parameter, dependent on e.g. grid resolution)
@@ -711,11 +712,11 @@ This last section provides directions and details on more advanced features.
     - about the `T_eff` metric;
     - on how to run MPI GPU applications on different hardware.
 
-- [ImplicitGlobalGrid.jl] supports CUDA-aware MPI, i.e., upon exporting the ENV variable `IGG_CUDAAWARE_MPI=1`, device (GPU) pointers can be directly exchanged by MPI bypassing extra buffer copies to the CPU for enhanced performance.
+- [ImplicitGlobalGrid.jl] supports CUDA-aware MPI upon exporting the ENV variable `IGG_CUDAAWARE_MPI=1`; MPI can then access device (GPU) pointers and exchange data directly between GPUs using Remote Direct Memory Access (RDMA) bypassing extra buffer copies to the CPU for enhanced performance.
 
-- In combination with [ImplicitGlobalGrid.jl], [ParallelStencil.jl] exposes a hiding communication feature accessible through the [`@hide_communication`](https://github.com/luraess/geo-hpc-course/blob/0a722ac5f6da47779dfceadfec79b92c95e9e40e/scripts/heat_2D_multixpu.jl#L61) macro. This macro allows to define a boundary width applied to each local domain in order to split the computation such that:
+- [ParallelStencil.jl] exposes a hiding communication feature accessible through the [`@hide_communication`](https://github.com/luraess/geo-hpc-course/blob/0a722ac5f6da47779dfceadfec79b92c95e9e40e/scripts/heat_2D_multixpu.jl#L61) macro. This macro allows to define a boundary width applied to each local domain in order to split the computation such that:
     1. The boundary cells are first computed
-    2. The MPI communication (boundary exchange procedure) can start
+    2. The communication (boundary exchange procedure) can start
     3. The remaining inner points are computed while boundary exchange is on-going.
 
     Further infos can be found [here](https://github.com/omlins/ParallelStencil.jl#seamless-interoperability-with-communication-packages-and-hiding-communication).
