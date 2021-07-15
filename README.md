@@ -138,7 +138,7 @@ julia> include("diffusion_2D_expl.jl")
 ```
 Running this the first time will (pre-)complie the various installed packages and will take some time. Subsequent runs, by executing `include("diffusion_2D_expl.jl")`, should take around 2s.
 
-You should then see a figure displayed showing the nonlinear diffusion of a quantitiy `H` after `nt=666` steps:
+You should then see a figure displayed showing the nonlinear diffusion of a quantity `H` after `nt=666` steps:
 
 ![](docs/diff2D_expl.png)
 
@@ -175,7 +175,7 @@ julia> MPI.install_mpiexecjl()
 $ HOME/.julia/bin/mpiexecjl -n np julia --project <my_script.jl>
 ```
 
-5. To test the Julia MPI installation, launch the [hello_mpi.jl](extras/hello_mpi.jl) using the Julia MPI wrapper `mpiexecjl` (located in `~/.julia/bin`) on 4 processes:
+5. To test the Julia MPI installation, launch the [`hello_mpi.jl`](extras/hello_mpi.jl) using the Julia MPI wrapper `mpiexecjl` (located in `~/.julia/bin`) on 4 processes:
 ```sh
 $ mpiexecjl -n 4 julia --project extras/hello_mpi.jl
 $ Hello world, I am 0 of 3
@@ -549,7 +549,7 @@ Note that `T_peak` of the Nvidia Tesla V100 GPU is 840 GB/s. Our GPU code thus a
 In this last part of the workshop, we will explore multi-XPU capabilities. This will enable our codes to run on multiple CPUs and GPUs in order to scale on modern multi-GPU nodes, clusters and supercomputers. Also, we will experiment with basic concepts of distributed memory computing approach using Julia's MPI wrapper [MPI.jl]. In the proposed approach, each MPI process handles one CPU thread. In the MPI GPU case (multi-GPUs), each MPI process handles one GPU. The [Getting started](#getting-started) section contains useful information in the **Julia MPI** section to get you set up.
 
 ### Distributed memory and fake parallelisation
-As a first step, we will look at the [`diffusion_1D_2procs.jl`](scripts/diffusion_1D_2procs.jl) code that solves the linear diffusion equations using a "fake-parallelisation" approach. We split the calculation on two distinct left and right domains, wich requires left and right `H` arrays, `HL` and `HR`, respectively:
+As a first step, we will look at the [`diffusion_1D_2procs.jl`](scripts/diffusion_1D_2procs.jl) code that solves the linear diffusion equations using a "fake-parallelisation" approach. We split the calculation on two distinct left and right domains, which requires left and right `H` arrays, `HL` and `HR`, respectively:
 ```julia
 # Compute physics locally
 HL[2:end-1] .= HL[2:end-1] + dt*λ*diff(diff(HL)/dx)/dx
@@ -560,7 +560,7 @@ HR[1]   = HL[end-1]
 # Global picture
 H .= [HL[1:end-1]; HR[2:end]]
 ```
-We see that a correct boundary update is the critical part for a successful implementation. In our apporach, we need an overlap of 2 cells in order to avoid any artifacts at the transition between the left and right domains.
+We see that a correct boundary update is the critical part for a successful implementation. In our approach, we need an overlap of 2 cells in order to avoid any artefacts at the transition between the left and right domains.
 
 The next step would be to generalise the "2 processes" concept to "n-processes", keeping the "fake-parallelisation" approach. The [`diffusion_1D_nprocs.jl`](scripts/diffusion_1D_nprocs.jl) code contains this modification:
 ```julia
@@ -576,7 +576,7 @@ for ip = 1:np # global picture
     Hg[i1:i1+nx-2] .= H[1:end-1,ip]
 end
 ```
-The number of fake processes are stored in the second dimension of the array `H`. The `# update boundaries` steps are adpted accordingly. All the physica calculations happen on the local chunks of the arrays. We only need "global" knowledge in the definition of the initial condition, in order to e.g. initialise the Gaussian distribution using global and not local coordinates.
+The number of fake processes are stored in the second dimension of the array `H`. The `# update boundaries` steps are adapted accordingly. All the physical calculations happen on the local chunks of the arrays. We only need "global" knowledge in the definition of the initial condition, in order to e.g. initialise the Gaussian distribution using global and not local coordinates.
 
 So far, so good, we are now ready to write a script that would truly distribute calculations on different processors using [MPI.jl].
 
@@ -594,7 +594,7 @@ on multiple processors. The [`diffusion_1D_mpi.jl`](scripts/diffusion_1D_mpi.jl)
 1. Initialise MPI and set-up a Cartesian world
 2. Implement a boundary exchange routine
 3. Finalise MPI
-4. Create a "global" intial condition
+4. Create a "global" initial condition
 
 To (1.) initialise MPI and prepare the Cartesian world, we define:
 ```julia
@@ -630,7 +630,7 @@ Then, we need to (2.) implement a boundary exchange routine. For conciseness, we
     return
 end
 ```
-In a nutshell, we store the boundary values we want to exchange in a send buffer `sednbuf` and initialise a receive buffer `recvbuf`. MPI then swaps the buffers (sending messages `MPI.Send(), MPI.Recv!()`) and we have to assign to the boundary the values from the receeive buffer.
+In a nutshell, we store the boundary values we want to exchange in a send buffer `sendbuf` and initialise a receive buffer `recvbuf`. MPI then swaps the buffers (sending messages `MPI.Send(), MPI.Recv!()`) and we have to assign to the boundary the values from the receive buffer.
 
 Last, we need to (3.) finalise MPI prior to returning from the main
 ```julia
@@ -648,7 +648,7 @@ Running the [`diffusion_1D_mpi.jl`](scripts/diffusion_1D_mpi.jl) code
 ```sh
 HOME/.julia/bin/mpiexecjl -n 4 julia --project diffusion_1D_mpi.jl
 ```
-will generate one output file for each MPI process. Use the [scripts/vizme1D_mpi.jl](scripts/vizme1D_mpi.jl) script to reconstruct the global `H` array from the local results and visualise it.
+will generate one output file for each MPI process. Use the [`vizme1D_mpi.jl`](scripts/vizme1D_mpi.jl) script to reconstruct the global `H` array from the local results and visualise it.
 
 Yay 🎉 - we just made a Julia parallel MPI diffusion solver in _only_ 70 lines of code.
 
