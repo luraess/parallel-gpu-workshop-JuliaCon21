@@ -542,7 +542,7 @@ We have developed 6 scripts, 3 CPU-based and 3 GPU-based, we can now use to real
 
 ![](docs/perf_gpu.png)
 
-Note that `T_peak` of the Nvidia Tesla V100 GPU is 840 GB/s. Our GPU code thus achieves 92% of hardware peak performance. The codes used for performance tests and testing routine can be found in [extras/diffusion_2D_perf_tests](extras/diffusion_2D_perf_tests).
+Note that `T_peak` of the Nvidia Tesla V100 GPU is 840 GB/s. Our GPU code thus achieves an effective memory throughput which is 92% of the peak memory throughput. The codes used for performance tests and testing routine can be found in [extras/diffusion_2D_perf_tests](extras/diffusion_2D_perf_tests).
 
 ⤴️ [_back to workshop material_](#workshop-material)
 
