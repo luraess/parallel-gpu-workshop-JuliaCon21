@@ -246,7 +246,7 @@ H0 = exp(-(x-lx/2.0)^2 -(y-ly/2.0)^2)
 A simple way to solve nonlinear diffusion, BUT:
 - given the explicit nature of the scheme we have a restrictive limitation on the maximal allowed time step (subject to the CFL stability condition):
   ```md
-  dt = minimum(min(dx, dy)^2 ./inn(H).^npow./4.1)
+  dt = minimum(min(dx, dy)^2 ./ inn(H).^npow ./ 4.1)
   ```
 - there might be loss of accuracy since we use an explicit scheme for a nonlinear problem.
 
@@ -311,13 +311,13 @@ Let's implement this measure in the following scripts.
 In this second part of the workshop, we will port the [`diffusion_2D_damp.jl`](scripts/diffusion_2D_damp.jl) script implemented using Julia CPU array broadcasting to high-performance parallel CPU and GPU implementations. 
 ```julia
 # [...] skipped lines
-qHx    .= -av_xi(H).^npow.*diff(H[:,2:end-1], dims=1)/dx  # flux
-qHy    .= -av_yi(H).^npow.*diff(H[2:end-1,:], dims=2)/dy  # flux
-ResH   .= -(inn(H) - inn(Hold))/dt + 
-           (-diff(qHx, dims=1)/dx -diff(qHy, dims=2)/dy)  # residual of the PDE
-dHdtau .= ResH + damp*dHdtau                              # damped rate of change
-dtau   .= (1.0./(min(dx, dy)^2 ./inn(H).^npow./4.1) .+ 1.0/dt).^-1  # time step (obeys ~CFL condition)
-H[2:end-1,2:end-1] .= inn(H) .+ dtau.*dHdtau              # update rule, sets the BC as H[1]=H[end]=0
+qHx    .= .-av_xi(H).^npow.*diff(H[:,2:end-1], dims=1)/dx  # flux
+qHy    .= .-av_yi(H).^npow.*diff(H[2:end-1,:], dims=2)/dy  # flux
+ResH   .= .-(inn(H) .- inn(Hold))/dt .+ 
+           (.-diff(qHx, dims=1)/dx .-diff(qHy, dims=2)/dy) # residual of the PDE
+dHdtau .= ResH .+ damp*dHdtau                              # damped rate of change
+dtau   .= (1.0./(min(dx, dy)^2. /inn(H).^npow./4.1) .+ 1.0/dt).^-1  # time step (obeys ~CFL condition)
+H[2:end-1,2:end-1] .= inn(H) .+ dtau.*dHdtau               # update rule, sets the BC as H[1]=H[end]=0
 # [...] skipped lines
 ```
 In the first step towards this goal we:
@@ -330,13 +330,13 @@ This results in the following code (c.f. [`diffusion_2D_damp_perf.jl`](scripts/d
 using LazyArrays
 using LazyArrays: Diff
 # [...] skipped lines
-macro qHx()  esc(:( -av_xi(H).^npow.*Diff(H[:,2:end-1], dims=1)/dx )) end
-macro qHy()  esc(:( -av_yi(H).^npow.*Diff(H[2:end-1,:], dims=2)/dy )) end
+macro qHx()  esc(:( .-av_xi(H).^npow.*Diff(H[:,2:end-1], dims=1)/dx )) end
+macro qHy()  esc(:( .-av_yi(H).^npow.*Diff(H[2:end-1,:], dims=2)/dy )) end
 macro dtau() esc(:( (1.0./(min(dx, dy)^2 ./inn(H).^npow./4.1) .+ 1.0/dt).^-1  )) end
 # [...] skipped lines
 if (it==1 && iter==0) t_tic = Base.time(); niter = 0 end
-dHdtau .= -(inn(H) - inn(Hold))/dt + 
-           (-Diff(@qHx(), dims=1)/dx -Diff(@qHy(), dims=2)/dy) +
+dHdtau .= .-(inn(H) .- inn(Hold))/dt .+ 
+           (.-Diff(@qHx(), dims=1)/dx .-Diff(@qHy(), dims=2)/dy) .+
            damp*dHdtau                              # damped rate of change
 H2[2:end-1,2:end-1] .= inn(H) .+ @dtau().*dHdtau    # update rule, sets the BC as H[1]=H[end]=0
 H, H2 = H2, H                                       # pointer swap
@@ -451,7 +451,7 @@ BLOCKX = 32
 BLOCKY = 8
 GRIDX  = 16*16
 GRIDY  = 32*32
-nx, ny = BLOCKX*GRIDX, BLOCKY*GRIDY # numerical grid resolution
+nx, ny = BLOCKX*GRIDX, BLOCKY*GRIDY # number of grid points
 # [...] skipped lines
 ResH   = CUDA.zeros(Float64, nx-2, ny-2) # normal grid, without boundary points
 dHdtau = CUDA.zeros(Float64, nx-2, ny-2) # normal grid, without boundary points
@@ -478,7 +478,7 @@ So - that rocks 🚀
 ⤴️ [_back to workshop material_](#workshop-material)
 
 ### XPU implementation
-Let's do a rapid recap; so far we have two performant codes, one CPU-based, the other GPU-based, to solve the nonlinear and implicit diffusion equation in 2D. Wouldn't it be great to have single code that enables both ? The answer is [ParallelStencil.jl] which enables a backend independent syntax implementing parallel stencil kernels to execute on XPUs. The [`diffusion_2D_damp_perf_xpu.jl`](scripts/diffusion_2D_damp_perf_xpu.jl) code uses [ParallelStencil.jl] to combine [`diffusion_2D_damp_perf_gpu.jl`](scripts/diffusion_2D_damp_perf_gpu.jl) and [`diffusion_2D_damp_perf_loop_fun.jl`](scripts/diffusion_2D_damp_perf_loop_fun.jl) into a single code. Backend can be chosen by the `USE_GPU` flag. Using the `parallel_indices` permits to avoid storing the fluxes to main memory:
+Let's do a rapid recap; so far we have two performant codes, one CPU-based, the other GPU-based, to solve the nonlinear and implicit diffusion equation in 2D. Wouldn't it be great to have single code that enables both ? The answer is [ParallelStencil.jl] which enables a backend independent syntax implementing parallel stencil kernels to execute on XPUs. The [`diffusion_2D_damp_perf_xpu.jl`](scripts/diffusion_2D_damp_perf_xpu.jl) code uses [ParallelStencil.jl] to combine [`diffusion_2D_damp_perf_gpu.jl`](scripts/diffusion_2D_damp_perf_gpu.jl) and [`diffusion_2D_damp_perf_loop_fun.jl`](scripts/diffusion_2D_damp_perf_loop_fun.jl) into a single code. Backend can be chosen by the `USE_GPU` flag. Using the `parallel_indices` permits to write code that avoids storing the fluxes to main memory:
 ```julia
 const USE_GPU = true
 using ParallelStencil
@@ -549,8 +549,8 @@ In this last part of the workshop, we will explore multi-XPU capabilities. This 
 As a first step, we will look at the [`diffusion_1D_2procs.jl`](scripts/diffusion_1D_2procs.jl) code that solves the linear diffusion equations using a "fake-parallelisation" approach. We split the calculation on two distinct left and right domains, which requires left and right `H` arrays, `HL` and `HR`, respectively:
 ```julia
 # Compute physics locally
-HL[2:end-1] .= HL[2:end-1] + dt*λ*diff(diff(HL)/dx)/dx
-HR[2:end-1] .= HR[2:end-1] + dt*λ*diff(diff(HR)/dx)/dx
+HL[2:end-1] .= HL[2:end-1] .+ dt*λ*diff(diff(HL)/dx)/dx
+HR[2:end-1] .= HR[2:end-1] .+ dt*λ*diff(diff(HR)/dx)/dx
 # Update boundaries (later MPI)
 HL[end] = HR[2]
 HR[1]   = HL[end-1]
@@ -562,7 +562,7 @@ We see that a correct boundary update is the critical part for a successful impl
 The next step would be to generalise the "2 processes" concept to "n-processes", keeping the "fake-parallelisation" approach. The [`diffusion_1D_nprocs.jl`](scripts/diffusion_1D_nprocs.jl) code contains this modification:
 ```julia
 for ip = 1:np # compute physics locally
-    H[2:end-1,ip] .= H[2:end-1,ip] + dt*λ*diff(diff(H[:,ip])/dxg)/dxg
+    H[2:end-1,ip] .= H[2:end-1,ip] .+ dt*λ*diff(diff(H[:,ip])/dxg)/dxg
 end
 for ip = 1:np-1 # update boundaries
     H[end,ip  ] = H[    2,ip+1]
@@ -583,8 +583,8 @@ So far, so good, we are now ready to write a script that would truly distribute 
 As next step, let's see what are the minimal steps that would allow us to write an MPI-parallel code in Julia. We will solve the following linear diffusion physics:
 ```julia
 for it = 1:nt
-    qHx        .= -λ*diff(H)/dx
-    H[2:end-1] .= H[2:end-1] - dt*diff(qHx)/dx
+    qHx        .= .-λ*diff(H)/dx
+    H[2:end-1] .= H[2:end-1] .- dt*diff(qHx)/dx
 end
 ```
 on multiple processors. The [`diffusion_1D_mpi.jl`](scripts/diffusion_1D_mpi.jl) code implements the following steps:
