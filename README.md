@@ -703,7 +703,7 @@ Running the [`diffusion_2D_damp_perf_multixpu.jl`](scripts/diffusion_2D_damp_per
 
 ![](docs/diffusion_2D_multixpu.gif)
 
-So, here we are. We have a Julia GPU MPI code to resolve nonlinear diffusion processes in 2D using a second order accelerated iterative scheme and can run it on GPU supercomputers 🎉.
+So, here we are. **We have a Julia GPU MPI code to resolve nonlinear diffusion processes in 2D using a second order accelerated iterative scheme and we can run it on GPU supercomputers** 🎉.
 
 ⤴️ [_back to workshop material_](#workshop-material)
 
