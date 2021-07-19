@@ -4,7 +4,7 @@
 
 RESOL=(64 128 256 512 1024 2048 4096 8192 16384)
 
-declare -a RUN=( "diffusion_2D_damp_perf_gpu" "diffusion_2D_damp_perf_xpu" "diffusion_2D_damp_xpu" "diffusion_2D_damp_perf_loop_fun" "diffusion_2D_damp_perf_loop" "diffusion_2D_damp_perf" )
+declare -a RUN=( "diffusion_2D_damp_perf_gpu_iters" )
 
 USE_GPU=true
 DO_VIZ=false

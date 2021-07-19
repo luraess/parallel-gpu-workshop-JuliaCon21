@@ -267,9 +267,15 @@ It works, but the "naive" _Picard_ iteration count seems to be pretty high (`nit
 ```md
 dHdt = ResH + damp*dHdt
 ```
-The [`diffusion_2D_damp.jl`](scripts/diffusion_2D_damp.jl) code implements a damped iterative implicit solution of eq. (1). The iteration count drops to `niter<200`. This second order pseudo-transient approach enables the iteration count to scale close to _O(N)_ and not _O(N^2)_; we will do a scaling test at the end of Part 2 in [Performance and scaling](#performance-and-scaling) section.
+The [`diffusion_2D_damp.jl`](scripts/diffusion_2D_damp.jl) code implements a damped iterative implicit solution of eq. (1). The iteration count drops to `niter<200`.
 
 ![](docs/diff2D_damp.png)
+
+This second order pseudo-transient approach enables the iteration count to scale close to _O(N)_ and not _O(N^2)_, resulting in a total number of iterations `niter` normalised by the number of grid points `nx` to stay constant and even decay as function of number of grid points `nx`:
+
+![](docs/iter_scale.png)
+
+> The code used for scaling test, testing and visualisation routines can be found in [extras/diffusion_2D_perf_tests](extras/diffusion_2D_perf_tests).
 
 So far so good, we have a fast implicit iterative solver. But why to bother with implicit, wasn't explicit good enough ? Let's compare the difference between the explicit and the damped implicit results using the [`compare_expl_impl.jl`](scripts/compare_expl_impl.jl) script, chosing the "explicit" physical time step for both the explicit and implicit code:
 
