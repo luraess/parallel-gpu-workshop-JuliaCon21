@@ -1,3 +1,4 @@
+# 2D nonlinear diffusion GPU implicit solver with acceleration
 using CUDA, Plots, Printf, LinearAlgebra
 
 # enable plotting by default
@@ -43,7 +44,7 @@ end
     BLOCKY = 8
     GRIDX  = 16*16
     GRIDY  = 32*32
-    nx, ny = BLOCKX*GRIDX, BLOCKY*GRIDY # numerical grid resolution
+    nx, ny = BLOCKX*GRIDX, BLOCKY*GRIDY # number of grid points
     nout   = 100          # check error every nout
     tol    = 1e-6         # tolerance
     itMax  = 1e5          # max number of iterations

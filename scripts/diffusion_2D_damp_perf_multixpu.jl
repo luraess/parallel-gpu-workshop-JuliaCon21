@@ -1,3 +1,4 @@
+# 2D nonlinear diffusion multi-XPU implicit solver with acceleration
 const USE_GPU = false
 const do_visu = true
 using ParallelStencil
@@ -45,8 +46,8 @@ end
     ttot   = 1.0          # total simulation time
     dt     = 0.2          # physical time step
     # Numerics
-    # nx, ny = 16*32*16, 16*32*16 # numerical grid resolution
-    nx, ny = 32, 32 # numerical grid resolution
+    nx, ny = 16*32*16, 16*32*16 # number of grid points
+    # nx, ny = 32, 32       # number of grid points
     nout   = 100          # check error every nout
     tol    = 1e-6         # tolerance
     itMax  = 1e5          # max number of iterations

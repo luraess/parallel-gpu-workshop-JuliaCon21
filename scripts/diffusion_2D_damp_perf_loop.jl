@@ -1,3 +1,4 @@
+# 2D nonlinear diffusion CPU implicit solver with acceleration
 using Plots, Printf, LinearAlgebra
 
 # enable plotting by default
@@ -15,7 +16,7 @@ macro dtau(ix,iy) esc(:(  (1.0/(min(dx,dy)^2 / H[$ix+1,$iy+1]^npow/4.1) + 1.0/dt
     ttot   = 1.0          # total simulation time
     dt     = 0.2          # physical time step
     # Numerics
-    nx, ny = 512, 512     # numerical grid resolution
+    nx, ny = 512, 512     # number of grid points
     nout   = 100          # check error every nout
     tol    = 1e-6         # tolerance
     itMax  = 1e5          # max number of iterations

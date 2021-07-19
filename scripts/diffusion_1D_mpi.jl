@@ -1,3 +1,4 @@
+# 1D linear diffusion Julia MPI solver
 # run: ~/.julia/bin/mpiexecjl -n 4 julia --project diffusion_1D_mpi.jl
 using Plots, Printf, MAT
 import MPI
@@ -41,8 +42,8 @@ end
     λ     = 1.0
     nt    = 100
     # Numerics
-    nx    = 32                 # local
-    nx_g  = dims[1]*(nx-2) + 2 # global
+    nx    = 32                 # local number of grid points
+    nx_g  = dims[1]*(nx-2) + 2 # global number of grid points
     # Derived numerics
     dx    = lx/nx_g            # global
     dt    = dx^2/λ/2.1
@@ -56,8 +57,8 @@ end
     # Time loop
     for it = 1:nt
         if (it==11) t_tic = Base.time() end
-        qHx        .= -λ*diff(H)/dx
-        H[2:end-1] .= H[2:end-1] - dt*diff(qHx)/dx
+        qHx        .= .-λ*diff(H)/dx
+        H[2:end-1] .= H[2:end-1] .- dt*diff(qHx)/dx
         update_halo(H, neighbors_x, comm_cart)
     end
     t_toc = Base.time()-t_tic

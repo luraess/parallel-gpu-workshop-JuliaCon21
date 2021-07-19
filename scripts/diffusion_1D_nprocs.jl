@@ -1,3 +1,4 @@
+# Linear 1D diffusion with n fake mpi processes
 using Plots
 
 # enable plotting by default
@@ -10,7 +11,7 @@ if !@isdefined do_visu; do_visu = true end
     nt  = 200
     # Numerics
     np  = 4             # number of procs
-    nx  = 32            # local number of gridpoints
+    nx  = 32            # local number of grid points
     # Derived numerics
     nxg = (nx-2)*np+2   # global number of grid points
     dxg = lx/nxg        # dx for global grid
@@ -34,7 +35,7 @@ if !@isdefined do_visu; do_visu = true end
     # Time loop
     for it = 1:nt
         for ip = 1:np # compute physics locally
-            H[2:end-1,ip] .= H[2:end-1,ip] + dt*λ*diff(diff(H[:,ip])/dxg)/dxg
+            H[2:end-1,ip] .= H[2:end-1,ip] .+ dt*λ*diff(diff(H[:,ip])/dxg)/dxg
         end
         for ip = 1:np-1 # update boundaries
             H[end,ip  ] = H[    2,ip+1]

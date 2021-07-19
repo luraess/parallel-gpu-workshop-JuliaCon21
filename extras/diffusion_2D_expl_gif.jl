@@ -1,3 +1,4 @@
+# Explicit 2D nonlinear diffusion solver producing a gif animation output
 using Plots, Printf, LinearAlgebra
 
 # enable plotting by default
@@ -14,7 +15,7 @@ if !@isdefined do_visu; do_visu = true end
     npow   = 3            # power-law exponent
     ttot   = 1.0          # total simulation time
     # Numerics
-    nx, ny = 128, 128     # numerical grid resolution
+    nx, ny = 128, 128     # number of grid points
     # Derived numerics
     dx, dy = lx/nx, ly/ny # grid size
     xc, yc = LinRange(dx/2, lx-dx/2, nx), LinRange(dy/2, ly-dy/2, ny)
@@ -32,9 +33,9 @@ if !@isdefined do_visu; do_visu = true end
     end
     # Physical time loop
     while t<ttot
-        qHx    .= -av_xi(H).^npow.*diff(H[:,2:end-1], dims=1)/dx  # flux
-        qHy    .= -av_yi(H).^npow.*diff(H[2:end-1,:], dims=2)/dy  # flux
-        dHdt   .= -diff(qHx, dims=1)/dx -diff(qHy, dims=2)/dy     # rate of change
+        qHx    .= .-av_xi(H).^npow.*diff(H[:,2:end-1], dims=1)/dx  # flux
+        qHy    .= .-av_yi(H).^npow.*diff(H[2:end-1,:], dims=2)/dy  # flux
+        dHdt   .= .-diff(qHx, dims=1)/dx .-diff(qHy, dims=2)/dy    # rate of change
         H[2:end-1,2:end-1] .= inn(H) .+ dt.*dHdt      # update rule, sets the BC as H[1]=H[end]=0
         t += dt; it += 1
         # Visualize

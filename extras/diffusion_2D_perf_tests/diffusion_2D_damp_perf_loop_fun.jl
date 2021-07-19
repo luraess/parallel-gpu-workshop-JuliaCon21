@@ -1,3 +1,4 @@
+# 2D nonlinear diffusion multi-threaded CPU implicit solver with acceleration (perftests)
 using Plots, Printf, LinearAlgebra
 
 const do_visu = parse(Bool, ENV["DO_VIZ"])
@@ -53,7 +54,7 @@ end
     ttot   = 1.0          # total simulation time
     dt     = 0.2          # physical time step
     # Numerics
-    # nx, ny = 512, 512     # numerical grid resolution
+    # nx, ny = 512, 512     # number of grid points
     nout   = 100          # check error every nout
     tol    = 1e-6         # tolerance
     itMax  = 1e5          # max number of iterations

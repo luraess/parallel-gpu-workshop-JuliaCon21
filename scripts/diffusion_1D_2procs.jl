@@ -1,3 +1,4 @@
+# Linear 1D diffusion with 2 fake mpi processes
 using Plots
 
 # enable plotting by default
@@ -22,15 +23,15 @@ if !@isdefined do_visu; do_visu = true end
     # Time loop
     for it = 1:nt
         # Compute physics locally
-        HL[2:end-1] .= HL[2:end-1] + dt*λ*diff(diff(HL)/dx)/dx
-        HR[2:end-1] .= HR[2:end-1] + dt*λ*diff(diff(HR)/dx)/dx
+        HL[2:end-1] .= HL[2:end-1] .+ dt*λ*diff(diff(HL)/dx)/dx
+        HR[2:end-1] .= HR[2:end-1] .+ dt*λ*diff(diff(HR)/dx)/dx
         # Update boundaries (MPI)
         HL[end] = HR[2]
         HR[1]   = HL[end-1]
         # Global picture
         H .= [HL[1:end-1]; HR[2:end]]
         # Compute physics globally (check)
-        Hg[2:end-1] .= Hg[2:end-1] + dt*λ*diff(diff(Hg)/dx)/dx
+        Hg[2:end-1] .= Hg[2:end-1] .+ dt*λ*diff(diff(Hg)/dx)/dx
         # Visualise
         if do_visu
             fontsize = 12

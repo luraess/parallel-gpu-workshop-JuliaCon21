@@ -1,3 +1,4 @@
+# Visualisation script for the 2D MPI solver
 using Plots, MAT
 
 nprocs = (2, 2) # nprocs (x, y) dim

@@ -1,3 +1,4 @@
+# 2D nonlinear diffusion implicit solver
 using Plots, Printf, LinearAlgebra
 
 # enable plotting by default
@@ -15,7 +16,7 @@ if !@isdefined do_visu; do_visu = true end
     ttot   = 1.0          # total simulation time
     dt     = 0.2          # physical time step
     # Numerics
-    nx, ny = 128, 128     # numerical grid resolution
+    nx, ny = 128, 128     # number of grid points
     tol    = 1e-6         # tolerance
     itMax  = 1e5          # max number of iterations
     # Derived numerics
@@ -36,12 +37,12 @@ if !@isdefined do_visu; do_visu = true end
         iter = 0; err = 2*tol
         # Picard-type iteration
         while err>tol && iter<itMax
-            qHx    .= -av_xi(H).^npow.*diff(H[:,2:end-1], dims=1)/dx  # flux
-            qHy    .= -av_yi(H).^npow.*diff(H[2:end-1,:], dims=2)/dy  # flux
-            ResH   .= -(inn(H) - inn(Hold))/dt + 
-                       (-diff(qHx, dims=1)/dx -diff(qHy, dims=2)/dy)  # residual of the PDE
-            dHdtau .= ResH                                            # rate of change
-            dtau   .= (1.0./(min(dx, dy)^2 ./inn(H).^npow./4.1) .+ 1.0/dt).^-1  # time step (obeys ~CFL condition)
+            qHx    .= .-av_xi(H).^npow.*diff(H[:,2:end-1], dims=1)/dx  # flux
+            qHy    .= .-av_yi(H).^npow.*diff(H[2:end-1,:], dims=2)/dy  # flux
+            ResH   .= .-(inn(H) .- inn(Hold))/dt .+ 
+                       (.-diff(qHx, dims=1)/dx .-diff(qHy, dims=2)/dy) # residual of the PDE
+            dHdtau .= ResH                                             # rate of change
+            dtau   .= (1.0./(min(dx, dy)^2./inn(H).^npow./4.1) .+ 1.0/dt).^-1  # time step (obeys ~CFL condition)
             H[2:end-1,2:end-1] .= inn(H) .+ dtau.*dHdtau              # update rule, sets the BC as H[1]=H[end]=0
             iter += 1; err = norm(ResH)/length(ResH)
         end

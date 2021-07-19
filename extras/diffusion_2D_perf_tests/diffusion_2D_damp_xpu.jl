@@ -1,3 +1,4 @@
+# 2D nonlinear diffusion XPU implicit solver with acceleration (perftests)
 const USE_GPU = true
 using ParallelStencil
 using ParallelStencil.FiniteDifferences2D
@@ -49,8 +50,8 @@ end
     ttot   = 1.0          # total simulation time
     dt     = 0.2          # physical time step
     # Numerics
-    # nx, ny = 16*32*16, 16*32*16 # numerical grid resolution
-    # nx, ny = 512, 512 # numerical grid resolution
+    # nx, ny = 16*32*16, 16*32*16 # number of grid points
+    # nx, ny = 512, 512 # number of grid points
     nout   = 100          # check error every nout
     tol    = 1e-6         # tolerance
     itMax  = 1e5          # max number of iterations

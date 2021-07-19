@@ -1,3 +1,4 @@
+# 2D nonlinear diffusion CPU implicit solver with acceleration (perftests)
 using LazyArrays, Plots, Printf, LinearAlgebra
 using LazyArrays: Diff
 
@@ -15,9 +16,9 @@ const ny = parse(Int, ENV["NY"])
 @views   inn(A) = A[2:end-1,2:end-1]
 
 # macros to avoid array allocation
-macro qHx()  esc(:( -av_xi(H).^npow.*LazyArrays.Diff(H[:,2:end-1], dims=1)/dx )) end
-macro qHy()  esc(:( -av_yi(H).^npow.*LazyArrays.Diff(H[2:end-1,:], dims=2)/dy )) end
-macro dtau() esc(:( (1.0./(min(dx, dy)^2 ./inn(H).^npow./4.1) .+ 1.0/dt).^-1  )) end
+macro qHx()  esc(:( .-av_xi(H).^npow.*LazyArrays.Diff(H[:,2:end-1], dims=1)/dx )) end
+macro qHy()  esc(:( .-av_yi(H).^npow.*LazyArrays.Diff(H[2:end-1,:], dims=2)/dy )) end
+macro dtau() esc(:( (1.0./(min(dx, dy)^2 ./inn(H).^npow./4.1) .+ 1.0/dt).^-1   )) end
 
 @views function diffusion_2D_damp_perf(; do_visu=true, save_fig=false)
     # Physics
@@ -26,7 +27,7 @@ macro dtau() esc(:( (1.0./(min(dx, dy)^2 ./inn(H).^npow./4.1) .+ 1.0/dt).^-1  ))
     ttot   = 1.0          # total simulation time
     dt     = 0.2          # physical time step
     # Numerics
-    # nx, ny = 512, 512     # numerical grid resolution
+    # nx, ny = 512, 512     # number of grid points
     nout   = 100          # check error every nout
     tol    = 1e-6         # tolerance
     itMax  = 1e5          # max number of iterations
@@ -49,14 +50,14 @@ macro dtau() esc(:( (1.0./(min(dx, dy)^2 ./inn(H).^npow./4.1) .+ 1.0/dt).^-1  ))
         # Picard-type iteration
         while err>tol && iter<itMax
             if (it==1 && iter==0) t_tic = Base.time(); niter = 0 end
-            dHdtau .= -(inn(H) - inn(Hold))/dt + 
-                       (-Diff(@qHx(), dims=1)/dx -Diff(@qHy(), dims=2)/dy) +
+            dHdtau .= .-(inn(H) .- inn(Hold))/dt .+ 
+                       (.-Diff(@qHx(), dims=1)/dx .-Diff(@qHy(), dims=2)/dy) .+
                        damp*dHdtau                              # damped rate of change
             H2[2:end-1,2:end-1] .= inn(H) .+ @dtau().*dHdtau    # update rule, sets the BC as H[1]=H[end]=0
             H, H2 = H2, H                                       # pointer swap
             if iter % nout == 0
-                ResH  .= -(inn(H) - inn(Hold))/dt + 
-                          (-Diff(@qHx(), dims=1)/dx -Diff(@qHy(), dims=2)/dy)  # residual of the PDE
+                ResH  .= .-(inn(H) .- inn(Hold))/dt .+ 
+                          (.-Diff(@qHx(), dims=1)/dx .-Diff(@qHy(), dims=2)/dy)  # residual of the PDE
                 err = norm(ResH)/length(ResH)
             end
             iter += 1; niter += 1

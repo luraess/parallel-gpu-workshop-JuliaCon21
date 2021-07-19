@@ -1,3 +1,4 @@
+# 2D nonlinear diffusion GPU implicit solver with acceleration (perftests)
 using CUDA, Plots, Printf, LinearAlgebra
 
 const do_visu = parse(Bool, ENV["DO_VIZ"])
@@ -50,7 +51,7 @@ end
     # GRIDY  = 32*32
     GRIDX  = Int(nxx/BLOCKX)
     GRIDY  = Int(nyy/BLOCKY)
-    nx, ny = BLOCKX*GRIDX, BLOCKY*GRIDY # numerical grid resolution
+    nx, ny = BLOCKX*GRIDX, BLOCKY*GRIDY # number of grid points
     nout   = 100          # check error every nout
     tol    = 1e-6         # tolerance
     itMax  = 1e5          # max number of iterations

@@ -1,3 +1,4 @@
+# Memory copy 3D to return T_peak
 const USE_GPU = true
 using ParallelStencil
 using ParallelStencil.FiniteDifferences3D
@@ -14,7 +15,7 @@ end
 
 function memcopy3D()
 # Numerics
-nx, ny, nz = 1024, 1024, 512                             # Number of gridpoints in dimensions x, y and z
+nx, ny, nz = 1024, 1024, 512                             # Number of grid points in dimensions x, y and z
 nt = 100                                                 # Number of time steps
 
 # Array initializations

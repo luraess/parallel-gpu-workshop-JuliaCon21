@@ -1,3 +1,4 @@
+# # 2D linear diffusion Julia MPI solver
 # run: ~/.julia/bin/mpiexecjl -n 4 julia --project diffusion_2D_mpi.jl
 using Plots, Printf, MAT
 import MPI
@@ -56,8 +57,8 @@ end
     λ          = 1.0
     nt         = 100
     # Numerics
-    nx, ny     = 32, 32                             # local
-    nx_g, ny_g = dims[1]*(nx-2)+2, dims[2]*(ny-2)+2 # global
+    nx, ny     = 32, 32                             # local number of grid points
+    nx_g, ny_g = dims[1]*(nx-2)+2, dims[2]*(ny-2)+2 # global number of grid points
     # Derived numerics
     dx, dy     = lx/nx_g, ly/ny_g                   # global
     dt         = min(dx,dy)^2/λ/4.1
@@ -73,9 +74,9 @@ end
     # Time loop
     for it = 1:nt
         if (it==11) t_tic = Base.time() end
-        qHx .= -λ*diff(H[:,2:end-1], dims=1)/dx
-        qHy .= -λ*diff(H[2:end-1,:], dims=2)/dy
-        H[2:end-1,2:end-1] .= H[2:end-1,2:end-1] .- dt*(diff(qHx, dims=1)/dx + diff(qHy, dims=2)/dy)
+        qHx .= .-λ*diff(H[:,2:end-1], dims=1)/dx
+        qHy .= .-λ*diff(H[2:end-1,:], dims=2)/dy
+        H[2:end-1,2:end-1] .= H[2:end-1,2:end-1] .- dt*(diff(qHx, dims=1)/dx .+ diff(qHy, dims=2)/dy)
         update_halo(H, neighbors_x, neighbors_y, comm_cart)
     end
     t_toc = (Base.time()-t_tic)

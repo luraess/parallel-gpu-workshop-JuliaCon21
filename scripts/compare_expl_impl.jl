@@ -1,3 +1,4 @@
+# Compare the 2D explicit and implicit nonlinear diffusion solver results
 using Plots
 
 include("diffusion_2D_expl.jl")

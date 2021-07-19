@@ -1,3 +1,4 @@
+# Visualisation script for the 1D MPI solver
 using Plots, MAT
 
 nprocs = 4
