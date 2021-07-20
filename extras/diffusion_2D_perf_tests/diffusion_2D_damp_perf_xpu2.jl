@@ -1,10 +1,18 @@
-# 2D nonlinear diffusion GPU implicit solver with acceleration (perftests)
-using CUDA, Plots, Printf, LinearAlgebra
+# 2D nonlinear diffusion XPU implicit solver with acceleration
+const USE_GPU = true
+using ParallelStencil
+using ParallelStencil.FiniteDifferences2D
+@static if USE_GPU
+    @init_parallel_stencil(CUDA, Float64, 2)
+else
+    @init_parallel_stencil(Threads, Float64, 2)
+end
+using Plots, Printf, LinearAlgebra
 
 const do_visu = parse(Bool, ENV["DO_VIZ"])
 const do_save = parse(Bool, ENV["DO_SAVE"])
-const nxx = parse(Int, ENV["NX"])
-const nyy = parse(Int, ENV["NY"])
+const nx = parse(Int, ENV["NX"])
+const ny = parse(Int, ENV["NY"])
 
 # enable plotting by default
 # if !@isdefined do_visu; do_visu = false end
@@ -14,36 +22,30 @@ macro qHx(ix,iy)  esc(:( -(0.5*(H[$ix,$iy+1]+H[$ix+1,$iy+1]))*(0.5*(H[$ix,$iy+1]
 macro qHy(ix,iy)  esc(:( -(0.5*(H[$ix+1,$iy]+H[$ix+1,$iy+1]))*(0.5*(H[$ix+1,$iy]+H[$ix+1,$iy+1]))*(0.5*(H[$ix+1,$iy]+H[$ix+1,$iy+1])) * (H[$ix+1,$iy+1]-H[$ix+1,$iy])*_dy )) end
 macro dtau(ix,iy) esc(:(  (1.0/(min_dxy2 / (H[$ix+1,$iy+1]*H[$ix+1,$iy+1]*H[$ix+1,$iy+1]) / 4.1) + _dt)^-1  )) end
 
-function compute_update!(H2, dHdtau, H, Hold, _dt, damp, min_dxy2, _dx, _dy)
-    ix = (blockIdx().x-1) * blockDim().x + threadIdx().x
-    iy = (blockIdx().y-1) * blockDim().y + threadIdx().y
+@parallel_indices (ix,iy) function compute_update!(H2, dHdtau, H, Hold, _dt, damp, min_dxy2, _dx, _dy)
     if (ix<=size(dHdtau,1) && iy<=size(dHdtau,2))
-        dHdtau[ix,iy] = -(H[ix+1, iy+1] - Hold[ix+1, iy+1])*_dt + 
+        dHdtau[ix,iy] = -(H[ix+1, iy+1] - Hold[ix+1, iy+1])*_dt +
                          (-(@qHx(ix+1,iy)-@qHx(ix,iy))*_dx -(@qHy(ix,iy+1)-@qHy(ix,iy))*_dy) +
                          damp*dHdtau[ix,iy]                        # damped rate of change
-        H2[ix+1,iy+1] = H[ix+1,iy+1] + @dtau(ix,iy)*dHdtau[ix,iy]  # update rule, sets the BC as H[1]=H[end]=0
+        H2[ix+1,iy+1] = H[ix+1,iy+1] + @dtau(ix,iy)*dHdtau[ix,iy]  # update rule, sets the BC implicitly as H[1]=H[end]=0
     end
     return
 end
 
-function compute_residual!(ResH, H, Hold, _dt, _dx, _dy)
-    ix = (blockIdx().x-1) * blockDim().x + threadIdx().x
-    iy = (blockIdx().y-1) * blockDim().y + threadIdx().y
+@parallel_indices (ix,iy) function compute_residual!(ResH, H, Hold, _dt, _dx, _dy)
     if (ix<=size(ResH,1) && iy<=size(ResH,2))
-        ResH[ix,iy] = -(H[ix+1, iy+1] - Hold[ix+1, iy+1])*_dt + 
+        ResH[ix,iy] = -(H[ix+1, iy+1] - Hold[ix+1, iy+1])*_dt +
                        (-(@qHx(ix+1,iy)-@qHx(ix,iy))*_dx -(@qHy(ix,iy+1)-@qHy(ix,iy))*_dy)
     end
     return
 end
 
-function assign!(Hold, H)
-    ix = (blockIdx().x-1) * blockDim().x + threadIdx().x
-    iy = (blockIdx().y-1) * blockDim().y + threadIdx().y
+@parallel_indices (ix,iy) function assign!(Hold, H)
     if (ix<=size(H,1) && iy<=size(H,2)) Hold[ix,iy] = H[ix,iy] end
     return
-end 
+end
 
-@views function diffusion_2D_damp_perf_gpu(; do_visu=true, save_fig=false)
+@views function diffusion_2D_damp_perf_xpu(; do_visu=true, save_fig=false)
     # Physics
     lx, ly = 10.0, 10.0   # domain size
     ttot   = 1.0          # total simulation time
@@ -64,10 +66,10 @@ end
     dx, dy = lx/nx, ly/ny # grid size
     xc, yc = LinRange(dx/2, lx-dx/2, nx), LinRange(dy/2, ly-dy/2, ny)
     # Array allocation
-    ResH   = CUDA.zeros(Float64, nx-2, ny-2) # normal grid, without boundary points
-    dHdtau = CUDA.zeros(Float64, nx-2, ny-2) # normal grid, without boundary points
+    ResH   = @zeros(nx-2, ny-2) # normal grid, without boundary points
+    dHdtau = @zeros(nx-2, ny-2) # normal grid, without boundary points
     # Initial condition
-    H      = CuArray(exp.(.-(xc.-lx/2).^2 .-(yc.-ly/2)'.^2))
+    H      = Data.Array(exp.(.-(xc.-lx/2).^2 .-(yc.-ly/2)'.^2))
     Hold   = copy(H)
     H2     = copy(H)
     cuthreads = (BLOCKX, BLOCKY, 1)
@@ -81,24 +83,21 @@ end
         # Picard-type iteration
         while err>tol && iter<itMax
             if (it==1 && iter==0) t_tic = Base.time(); niter = 0 end
-            @cuda blocks=cublocks threads=cuthreads compute_update!(H2, dHdtau, H, Hold, _dt, damp, min_dxy2, _dx, _dy)
-            synchronize()
+            @parallel cublocks cuthreads compute_update!(H2, dHdtau, H, Hold, _dt, damp, min_dxy2, _dx, _dy)
             H, H2 = H2, H
             if iter % nout == 0
-                @cuda blocks=cublocks threads=cuthreads compute_residual!(ResH, H, Hold, _dt, _dx, _dy)
-                synchronize()
+                @parallel cublocks cuthreads compute_residual!(ResH, H, Hold, _dt, _dx, _dy)
                 err = norm(ResH)/length(ResH)
             end
             iter += 1; niter += 1
         end
         ittot += iter; it += 1; t += dt
-        @cuda blocks=cublocks threads=cuthreads assign!(Hold, H)
-        synchronize()
+        @parallel cublocks cuthreads assign!(Hold, H)
     end
     t_toc = Base.time() - t_tic
-    A_eff = (2*2+1)/1e9*nx*ny*sizeof(Float64)  # Effective main memory access per iteration [GB]
-    t_it  = t_toc/niter                        # Execution time per iteration [s]
-    T_eff = A_eff/t_it                         # Effective memory throughput [GB/s]
+    A_eff = (2*2+1)/1e9*nx*ny*sizeof(Data.Number) # Effective main memory access per iteration [GB]
+    t_it  = t_toc/niter                           # Execution time per iteration [s]
+    T_eff = A_eff/t_it                            # Effective memory throughput [GB/s]
     @printf("Time = %1.3f sec, T_eff = %1.2f GB/s (niter = %d)\n", t_toc, round(T_eff, sigdigits=2), niter)
     # Visualize
     if do_visu
@@ -109,8 +108,8 @@ end
         display(heatmap(xc, yc, Array(H)'; c=:davos, title="damped diffusion (nt=$it, iters=$ittot)", opts...))
         if save_fig savefig("diff2D_damp.png") end
     end
-    if do_save open("./output/out_diffusion_2D_damp_perf_gpu.txt","a") do io; println(io, "$(nx) $(ny) $(t_toc) $(T_eff)") end end
+    if do_save open("./output/out_diffusion_2D_damp_perf_xpu2.txt","a") do io; println(io, "$(nx) $(ny) $(t_toc) $(T_eff)") end end
     return
 end
 
-diffusion_2D_damp_perf_gpu(; do_visu=do_visu)
+diffusion_2D_damp_perf_xpu(; do_visu=do_visu)

@@ -30,6 +30,7 @@ elseif plot_fig==2
     perf_gpu_v100 = readdlm("out_diffusion_2D_damp_perf_gpu.txt")
     perf_xpu_v100 = readdlm("out_diffusion_2D_damp_perf_xpu.txt")
     xpu_v100 = readdlm("out_diffusion_2D_damp_xpu.txt")
+    perf_xpu2_v100 = readdlm("out_diffusion_2D_damp_perf_xpu2.txt")
 
     x = perf_gpu_v100[[1,6,7,8,9],1]
     ticks = collect(x)
@@ -37,8 +38,9 @@ elseif plot_fig==2
 
     p2 = plot(perf_gpu_v100[:,1], perf_gpu_v100[:,4]; xlims=(-50, 17000), ylims=(-10, 1100), label="GPU", xlabel="number of grid points (nx)", opts...)
     plot!(perf_xpu_v100[:,1], perf_xpu_v100[:,4]; label="XPU parallel_indices", opts...)
+    plot!(xpu_v100[:,1], xpu_v100[:,4]; label="XPU parallel", opts...)
     plot!(xticks=(ticks,ticklabels),xrotation=0)
-    display(plot!(xpu_v100[:,1], xpu_v100[:,4]; label="XPU parallel", opts...))
+    display(plot!(perf_xpu2_v100[:,1], perf_xpu2_v100[:,4]; label="XPU parallel_indices 2", markershape=:circle, opts...))
     if save_fig savefig("perf_gpu.png") end
 
 elseif plot_fig==3

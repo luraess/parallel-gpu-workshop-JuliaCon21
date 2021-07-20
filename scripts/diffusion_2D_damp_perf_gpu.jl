@@ -12,18 +12,22 @@ macro dtau(ix,iy) esc(:(  (1.0/(min_dxy2 / (H[$ix+1,$iy+1]*H[$ix+1,$iy+1]*H[$ix+
 function compute_update!(H2, dHdtau, H, Hold, _dt, damp, min_dxy2, _dx, _dy)
     ix = (blockIdx().x-1) * blockDim().x + threadIdx().x
     iy = (blockIdx().y-1) * blockDim().y + threadIdx().y
-    if  (ix<=size(dHdtau,1) && iy<=size(dHdtau,2)) dHdtau[ix,iy] = -(H[ix+1, iy+1] - Hold[ix+1, iy+1])*_dt + 
-                                                                    (-(@qHx(ix+1,iy)-@qHx(ix,iy))*_dx -(@qHy(ix,iy+1)-@qHy(ix,iy))*_dy) +
-                                                                    damp*dHdtau[ix,iy] end                       # damped rate of change
-    if  (ix<=size(dHdtau,1) && iy<=size(dHdtau,2)) H2[ix+1,iy+1] = H[ix+1,iy+1] + @dtau(ix,iy)*dHdtau[ix,iy] end # update rule, sets the BC as H[1]=H[end]=0
+    if (ix<=size(dHdtau,1) && iy<=size(dHdtau,2))
+        dHdtau[ix,iy] = -(H[ix+1, iy+1] - Hold[ix+1, iy+1])*_dt + 
+                         (-(@qHx(ix+1,iy)-@qHx(ix,iy))*_dx -(@qHy(ix,iy+1)-@qHy(ix,iy))*_dy) +
+                         damp*dHdtau[ix,iy]                           # damped rate of change
+        H2[ix+1,iy+1] = H[ix+1,iy+1] + @dtau(ix,iy)*dHdtau[ix,iy]     # update rule, sets the BC as H[1]=H[end]=0
+    end
     return
 end
 
 function compute_residual!(ResH, H, Hold, _dt, _dx, _dy)
     ix = (blockIdx().x-1) * blockDim().x + threadIdx().x
     iy = (blockIdx().y-1) * blockDim().y + threadIdx().y
-    if (ix<=size(ResH,1) && iy<=size(ResH,2)) ResH[ix,iy] = -(H[ix+1, iy+1] - Hold[ix+1, iy+1])*_dt + 
-                                                             (-(@qHx(ix+1,iy)-@qHx(ix,iy))*_dx -(@qHy(ix,iy+1)-@qHy(ix,iy))*_dy) end
+    if (ix<=size(ResH,1) && iy<=size(ResH,2))
+        ResH[ix,iy] = -(H[ix+1, iy+1] - Hold[ix+1, iy+1])*_dt + 
+                       (-(@qHx(ix+1,iy)-@qHx(ix,iy))*_dx -(@qHy(ix,iy+1)-@qHy(ix,iy))*_dy)
+    end
     return
 end
 

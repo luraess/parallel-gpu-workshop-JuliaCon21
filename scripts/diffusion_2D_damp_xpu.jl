@@ -12,7 +12,6 @@ using Plots, Printf, LinearAlgebra
 # enable plotting by default
 if !@isdefined do_visu; do_visu = false end
 
-# @parallel function compute_flux!(qHx::Data.Array, qHy::Data.Array, H::Data.Array, _dx::Data.Number, _dy::Data.Number)
 @parallel function compute_flux!(qHx, qHy, H, _dx, _dy)
     @all(qHx) = -@av_xi(H)*@av_xi(H)*@av_xi(H)*@d_xi(H)*_dx
     @all(qHy) = -@av_yi(H)*@av_yi(H)*@av_yi(H)*@d_yi(H)*_dy
@@ -20,21 +19,18 @@ if !@isdefined do_visu; do_visu = false end
 end
 
 macro dtau() esc(:( (1.0/(min_dxy2 / (@inn(H)*@inn(H)*@inn(H)) / 4.1) + _dt)^-1 )) end
-# @parallel function compute_update!(dHdtau::Data.Array, H::Data.Array, Hold::Data.Array, qHx::Data.Array, qHy::Data.Array, _dt::Data.Number, damp::Data.Number, min_dxy2::Data.Number, _dx::Data.Number, _dy::Data.Number)
 @parallel function compute_update!(dHdtau, H, Hold, qHx, qHy, _dt, damp, min_dxy2, _dx, _dy)
     @all(dHdtau) = -(@inn(H) - @inn(Hold))*_dt - @d_xa(qHx)*_dx - @d_ya(qHy)*_dy + damp*@all(dHdtau)
     @inn(H)      =   @inn(H) + @dtau()*@all(dHdtau)
     return
 end
 
-# @parallel function compute_residual!(ResH::Data.Array, H::Data.Array, Hold::Data.Array, qHx::Data.Array, qHy::Data.Array, _dt::Data.Number, _dx::Data.Number, _dy::Data.Number)
 @parallel function compute_residual!(ResH, H, Hold, qHx, qHy, _dt, _dx, _dy)
     @all(ResH) = -(@inn(H) - @inn(Hold))*_dt - @d_xa(qHx)*_dx - @d_ya(qHy)*_dy
     return
 end
 
-@parallel function assign!(Hold::Data.Array, H::Data.Array)
-# @parallel function assign!(Hold, H)
+@parallel function assign!(Hold, H)
     @all(Hold) = @all(H)
     return
 end 
