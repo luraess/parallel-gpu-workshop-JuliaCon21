@@ -271,7 +271,7 @@ The [`diffusion_2D_damp.jl`](scripts/diffusion_2D_damp.jl) code implements a dam
 
 ![](docs/diff2D_damp.png)
 
-This second order pseudo-transient approach enables the iteration count to scale close to _O(N)_ and not _O(N^2)_, resulting in a total number of iterations `niter` normalised by the number of grid points `nx` to stay constant and even decay as function of number of grid points `nx`:
+This second order pseudo-transient approach enables the iteration count to scale close to _O(N)_ and not _O(N^2)_, resulting in a total number of iterations `niter` normalised by the number of grid points `nx` to stay constant and even decay with increasing number of grid points `nx`:
 
 ![](docs/iter_scale.png)
 
@@ -331,7 +331,7 @@ In the first step towards this goal we:
 - introduce a `H2` array to avoid race conditions
 - use non-allocating `diff` operators: `LazyArrays: Diff`
 - add accurate timing of the main loop and `T_eff` reporting
-This results in the following code (c.f. [`diffusion_2D_damp_perf.jl`](scripts/diffusion_2D_damp_perf.jl)):
+This results in the [`diffusion_2D_damp_perf.jl`](scripts/diffusion_2D_damp_perf.jl) code:
 ```julia
 using LazyArrays
 using LazyArrays: Diff
