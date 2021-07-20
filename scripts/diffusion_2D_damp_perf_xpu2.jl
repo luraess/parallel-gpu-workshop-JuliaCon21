@@ -49,7 +49,7 @@ end
     BLOCKX = 32
     BLOCKY = 8
     GRIDX  = 16*16
-    GRIDY  = 32*32
+    GRIDY  = 64*16
     nx, ny = BLOCKX*GRIDX, BLOCKY*GRIDY # number of grid points
     nout   = 100          # check error every nout
     tol    = 1e-6         # tolerance
