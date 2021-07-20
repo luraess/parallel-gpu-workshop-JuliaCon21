@@ -446,10 +446,12 @@ using CUDA
 function compute_update!(H2, dHdtau, H, Hold, _dt, damp, min_dxy2, _dx, _dy)
     ix = (blockIdx().x-1) * blockDim().x + threadIdx().x
     iy = (blockIdx().y-1) * blockDim().y + threadIdx().y
-    if  (ix<=size(dHdtau,1) && iy<=size(dHdtau,2)) dHdtau[ix,iy] = -(H[ix+1, iy+1] - Hold[ix+1, iy+1])*_dt + 
-                                                                    (-(@qHx(ix+1,iy)-@qHx(ix,iy))*_dx -(@qHy(ix,iy+1)-@qHy(ix,iy))*_dy) +
-                                                                    damp*dHdtau[ix,iy] end                       # damped rate of change
-    if  (ix<=size(dHdtau,1) && iy<=size(dHdtau,2)) H2[ix+1,iy+1] = H[ix+1,iy+1] + @dtau(ix,iy)*dHdtau[ix,iy] end # update rule, sets the BC as H[1]=H[end]=0
+    if (ix<=size(dHdtau,1) && iy<=size(dHdtau,2))
+        dHdtau[ix,iy] = -(H[ix+1, iy+1] - Hold[ix+1, iy+1])*_dt + 
+                         (-(@qHx(ix+1,iy)-@qHx(ix,iy))*_dx -(@qHy(ix,iy+1)-@qHy(ix,iy))*_dy) +
+                         damp*dHdtau[ix,iy]                        # damped rate of change
+        H2[ix+1,iy+1] = H[ix+1,iy+1] + @dtau(ix,iy)*dHdtau[ix,iy]  # update rule, sets the BC as H[1]=H[end]=0
+    end
     return
 end
 # [...] skipped lines
@@ -477,14 +479,14 @@ synchronize()
 
 Running [`diffusion_2D_damp_perf_gpu.jl`](scripts/diffusion_2D_damp_perf_gpu.jl) with `nx = ny = 8192` produces the following output on an Nvidia Tesla V100 PCIe (16GB) GPU (`T_peak = 840 GB/s` measured with [`memcopy3D.jl`](extras/memcopy3D.jl)):
 ```julia-repl
-Time = 10.084 sec, T_eff = 770.00 GB/s (niter = 2904)
+Time = 10.088 sec, T_eff = 770.00 GB/s (niter = 2904)
 ```
 So - that rocks 🚀
 
 ⤴️ [_back to workshop material_](#workshop-material)
 
 ### XPU implementation
-Let's do a rapid recap; so far we have two performant codes, one CPU-based, the other GPU-based, to solve the nonlinear and implicit diffusion equation in 2D. Wouldn't it be great to have single code that enables both ? The answer is [ParallelStencil.jl] which enables a backend independent syntax implementing parallel stencil kernels to execute on XPUs. The [`diffusion_2D_damp_perf_xpu.jl`](scripts/diffusion_2D_damp_perf_xpu.jl) code uses [ParallelStencil.jl] to combine [`diffusion_2D_damp_perf_gpu.jl`](scripts/diffusion_2D_damp_perf_gpu.jl) and [`diffusion_2D_damp_perf_loop_fun.jl`](scripts/diffusion_2D_damp_perf_loop_fun.jl) into a single code. Backend can be chosen by the `USE_GPU` flag. Using the `parallel_indices` permits to write code that avoids storing the fluxes to main memory:
+Let's do a rapid recap; so far we have two performant codes, one CPU-based, the other GPU-based, to solve the nonlinear and implicit diffusion equation in 2D. Wouldn't it be great to have single code that enables both ? The answer is [ParallelStencil.jl] which enables a backend independent syntax implementing parallel stencil kernels to execute on XPUs. The [`diffusion_2D_damp_perf_xpu2.jl`](scripts/diffusion_2D_damp_perf_xpu2.jl) code uses [ParallelStencil.jl] to combine [`diffusion_2D_damp_perf_gpu.jl`](scripts/diffusion_2D_damp_perf_gpu.jl) and [`diffusion_2D_damp_perf_loop_fun.jl`](scripts/diffusion_2D_damp_perf_loop_fun.jl) into a single code. Backend can be chosen by the `USE_GPU` flag. Using the `parallel_indices` permits to write code that avoids storing the fluxes to main memory:
 ```julia
 const USE_GPU = true
 using ParallelStencil
@@ -496,24 +498,25 @@ else
 end
 # [...] skipped lines
 @parallel_indices (ix,iy) function compute_update!(H2, dHdtau, H, Hold, _dt, damp, min_dxy2, _dx, _dy)
-    if (ix<=size(dHdtau,1) && iy<=size(dHdtau,2)) dHdtau[ix,iy] = -(H[ix+1, iy+1] - Hold[ix+1, iy+1])*_dt + 
-                                                                   (-(@qHx(ix+1,iy)-@qHx(ix,iy))*_dx -(@qHy(ix,iy+1)-@qHy(ix,iy))*_dy) +
-                                                                   damp*dHdtau[ix,iy] end                       # damped rate of change
-    if (ix<=size(dHdtau,1) && iy<=size(dHdtau,2)) H2[ix+1,iy+1] = H[ix+1,iy+1] + @dtau(ix,iy)*dHdtau[ix,iy] end # update rule, sets the BC implicitly as H[1]=H[end]=0
+    if (ix<=size(dHdtau,1) && iy<=size(dHdtau,2))
+        dHdtau[ix,iy] = -(H[ix+1, iy+1] - Hold[ix+1, iy+1])*_dt + 
+                         (-(@qHx(ix+1,iy)-@qHx(ix,iy))*_dx -(@qHy(ix,iy+1)-@qHy(ix,iy))*_dy) +
+                         damp*dHdtau[ix,iy]                        # damped rate of change
+        H2[ix+1,iy+1] = H[ix+1,iy+1] + @dtau(ix,iy)*dHdtau[ix,iy]  # update rule, sets the BC implicitly as H[1]=H[end]=0
+    end
     return
 end
 # [...] skipped lines
-@parallel compute_update!(H2, dHdtau, H, Hold, _dt, damp, min_dxy2, _dx, _dy)
+@parallel cublocks cuthreads compute_update!(H2, dHdtau, H, Hold, _dt, damp, min_dxy2, _dx, _dy)
 # [...] skipped lines
 ```
 > 💡 Note that [ParallelStencil.jl] currently supports `Threads.@threads` and `CUDA.jl` as backends.
 
-Running [`diffusion_2D_damp_perf_xpu.jl`](scripts/diffusion_2D_damp_perf_xpu.jl) with `nx = ny = 8192` on an Nvidia Tesla V100 PCIe (16GB) GPU produces following output:
+Running [`diffusion_2D_damp_perf_xpu2.jl`](scripts/diffusion_2D_damp_perf_xpu2.jl) with `nx = ny = 8192` on an Nvidia Tesla V100 PCIe (16GB) GPU produces following output:
 ```julia-repl
-Time = 10.323 sec, T_eff = 760.00 GB/s (niter = 2904)
+Time = 10.094 sec, T_eff = 770.00 GB/s (niter = 2904)
 ```
-
-The 10 GB/s performance difference with the pure [CUDA.jl] version is due to the [ParallelStencil.jl]'s "comfort features" for launching kernels, as e.g. computing automatically and dynamically optimal grid and thread block sizes. If needed, these can be precomputed manually and passed to the `@parallel` launch macro (type `?@parallel` for more information). The alternative and "default" implementation using [ParallelStencil.jl] would allow for using macros exposed by the `FiniteDifferences2D` module for a math-close notation in the kernels:
+That's excellent ! [ParallelStencil.jl] and the [CUDA.jl] backend show identical performance compared to the [`diffusion_2D_damp_perf_gpu.jl`](scripts/diffusion_2D_damp_perf_gpu.jl) pure [CUDA.jl] code. This ParallelStencil XPU code uses manually precomputed optimal grid and thread block sizes passed to the `@parallel` launch macro (type `?@parallel` for more information). Alternatively, ParallelStencil provides some "comfort features" for launching kernels, as e.g. computing automatically and dynamically optimal grid and thread block sizes, resulting in about 1% performance difference (see [`diffusion_2D_damp_perf_gpu.jl`](scripts/diffusion_2D_damp_perf_gpu.jl)). The "default" implementation using ParallelStencil would allow for using macros exposed by the `FiniteDifferences2D` module for a math-close notation in the kernels:
 ```julia
 # [...] skipped lines
 @parallel function compute_flux!(qHx, qHy, H, _dx, _dy)
