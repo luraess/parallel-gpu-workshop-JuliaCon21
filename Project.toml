@@ -1,6 +1,6 @@
 name = "parallel-gpu-workshop-JuliaCon21"
 uuid = "c8415de0-07bc-4364-b3be-98070beba1d9"
-authors = ["Ludovic Räss", "Mauro Werder"]
+authors = ["Ludovic Räss", "Mauro Werder", "Samuel Omlin"]
 
 [deps]
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
