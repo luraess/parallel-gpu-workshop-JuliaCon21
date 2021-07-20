@@ -11,8 +11,8 @@ using Plots, Printf, LinearAlgebra
 
 const do_visu = parse(Bool, ENV["DO_VIZ"])
 const do_save = parse(Bool, ENV["DO_SAVE"])
-const nx = parse(Int, ENV["NX"])
-const ny = parse(Int, ENV["NY"])
+const nxx = parse(Int, ENV["NX"])
+const nyy = parse(Int, ENV["NY"])
 
 # enable plotting by default
 # if !@isdefined do_visu; do_visu = false end

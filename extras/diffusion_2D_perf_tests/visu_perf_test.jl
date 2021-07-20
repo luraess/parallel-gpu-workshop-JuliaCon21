@@ -11,9 +11,9 @@ opts = (yaxis=font(fontsize, "Courier"), xaxis=font(fontsize, "Courier"),
 
 if plot_fig==1
 
-    perf_i5 = readdlm("out_diffusion_2D_damp_perf.txt")
-    perf_loop_i5 = readdlm("out_diffusion_2D_damp_perf_loop.txt")
-    perf_loop_fun_i5 = readdlm("out_diffusion_2D_damp_perf_loop_fun.txt")
+    perf_i5 = readdlm("output/out_diffusion_2D_damp_perf.txt")
+    perf_loop_i5 = readdlm("output/out_diffusion_2D_damp_perf_loop.txt")
+    perf_loop_fun_i5 = readdlm("output/out_diffusion_2D_damp_perf_loop_fun.txt")
 
     x = perf_i5[[1,4,5,6,7],1]
     ticks = collect(x)
@@ -27,25 +27,25 @@ if plot_fig==1
 
 elseif plot_fig==2
 
-    perf_gpu_v100 = readdlm("out_diffusion_2D_damp_perf_gpu.txt")
-    perf_xpu_v100 = readdlm("out_diffusion_2D_damp_perf_xpu.txt")
-    xpu_v100 = readdlm("out_diffusion_2D_damp_xpu.txt")
-    perf_xpu2_v100 = readdlm("out_diffusion_2D_damp_perf_xpu2.txt")
+    perf_gpu_v100 = readdlm("output/out_diffusion_2D_damp_perf_gpu.txt")
+    perf_xpu_v100 = readdlm("output/out_diffusion_2D_damp_perf_xpu.txt")
+    xpu_v100 = readdlm("output/out_diffusion_2D_damp_xpu.txt")
+    perf_xpu2_v100 = readdlm("output/out_diffusion_2D_damp_perf_xpu2.txt")
 
     x = perf_gpu_v100[[1,6,7,8,9],1]
     ticks = collect(x)
     ticklabels = [ @sprintf("%.f",x) for x in ticks ]
 
-    p2 = plot(perf_gpu_v100[:,1], perf_gpu_v100[:,4]; xlims=(-50, 17000), ylims=(-10, 1100), label="GPU", xlabel="number of grid points (nx)", opts...)
+    p2 = plot(perf_gpu_v100[:,1], perf_gpu_v100[:,4]; xlims=(-50, 17000), ylims=(-10, 1150), label="GPU", xlabel="number of grid points (nx)", opts...)
+    plot!(perf_xpu2_v100[:,1], perf_xpu2_v100[:,4]; label="XPU parallel_indices 2", markershape=:circle, markersize=5, linealpha=0, opts...)
     plot!(perf_xpu_v100[:,1], perf_xpu_v100[:,4]; label="XPU parallel_indices", opts...)
-    plot!(xpu_v100[:,1], xpu_v100[:,4]; label="XPU parallel", opts...)
     plot!(xticks=(ticks,ticklabels),xrotation=0)
-    display(plot!(perf_xpu2_v100[:,1], perf_xpu2_v100[:,4]; label="XPU parallel_indices 2", markershape=:circle, opts...))
+    display(plot!(xpu_v100[:,1], xpu_v100[:,4]; label="XPU parallel", opts...))
     if save_fig savefig("perf_gpu.png") end
 
 elseif plot_fig==3
 
-    scaling_iters = readdlm("out_diffusion_2D_damp_perf_gpu_iters.txt")
+    scaling_iters = readdlm("output/out_diffusion_2D_damp_perf_gpu_iters.txt")
 
     x = scaling_iters[[2,6,7,8,9],1]
     ticks = collect(x)
