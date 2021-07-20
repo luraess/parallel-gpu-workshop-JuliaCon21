@@ -47,8 +47,11 @@ end
     ttot   = 1.0          # total simulation time
     dt     = 0.2          # physical time step
     # Numerics
-    # nx, ny = 16*32*16, 16*32*16 # number of grid points
-    nx, ny = 32, 32       # number of grid points
+    BLOCKX = 32
+    BLOCKY = 8
+    GRIDX  = 16*16
+    GRIDY  = 64*16
+    nx, ny = BLOCKX*GRIDX, BLOCKY*GRIDY # number of grid points
     nout   = 100          # check error every nout
     tol    = 1e-6         # tolerance
     itMax  = 1e5          # max number of iterations
@@ -65,6 +68,8 @@ end
     H     .= Data.Array([exp(-(x_g(ix,dx,H)+dx/2 -lx/2)^2 -(y_g(iy,dy,H)+dy/2 -ly/2)^2) for ix=1:size(H,1), iy=1:size(H,2)])
     Hold   = copy(H)
     H2     = copy(H)
+    cuthreads = (BLOCKX, BLOCKY, 1)
+    cublocks  = (GRIDX,  GRIDY,  1)
     _dx, _dy, _dt = 1.0/dx, 1.0/dy, 1.0/dt
     min_dxy2 = min(dx,dy)^2
     len_ResH_g = ((nx-2-2)*dims[1]+2)*((ny-2-2)*dims[2]+2)
@@ -88,18 +93,18 @@ end
         while err>tol && iter<itMax
             if (it==1 && iter==0) t_tic = Base.time(); niter = 0 end
             @hide_communication (8, 4) begin # communication/computation overlap
-                @parallel compute_update!(H2, dHdtau, H, Hold, _dt, damp, min_dxy2, _dx, _dy)
+                @parallel cublocks cuthreads compute_update!(H2, dHdtau, H, Hold, _dt, damp, min_dxy2, _dx, _dy)
                 H, H2 = H2, H
                 update_halo!(H)
             end
             if iter % nout == 0
-                @parallel compute_residual!(ResH, H, Hold, _dt, _dx, _dy)
+                @parallel cublocks cuthreads compute_residual!(ResH, H, Hold, _dt, _dx, _dy)
                 err = norm_g(ResH)/len_ResH_g
             end
             iter += 1; niter += 1
         end
         ittot += iter; it += 1; t += dt
-        @parallel assign!(Hold, H)
+        @parallel cublocks cuthreads assign!(Hold, H)
         # Visualize
         if do_visu
             H_inn .= H[2:end-1,2:end-1]; gather!(H_inn, H_v)
