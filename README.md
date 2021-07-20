@@ -471,7 +471,7 @@ cublocks  = (GRIDX,  GRIDY,  1)
 synchronize()
 # [...] skipped lines
 ```
-> 💡 We use `@cuda blocks=cublocks threads=cuthreads` to launch the GPU kernel on the appropriate number of threads, i.e. "parallel workers". The numerical grid resolution `nx` and `ny` must now be chosen accordingly to the number of parallel workers. Also, note that we need to run a higher resolution in order to saturate the GPU memory bandwidth and get relevant performance measure.
+> 💡 We use `@cuda blocks=cublocks threads=cuthreads` to launch the GPU kernel on the appropriate number of threads, i.e. "parallel workers". The number of grid points `nx` and `ny` must now be chosen accordingly to the number of parallel workers. Also, note that we need to run higher resolution in order to saturate the GPU memory bandwidth and get relevant performance measure.
 
 > ⚠ Default precision in `CUDA.jl` is `Float32`, so we have to enforce `Float64` here.
 
@@ -538,7 +538,7 @@ The performance is significantly less good in this case as writing fluxes to mai
 ⤴️ [_back to workshop material_](#workshop-material)
 
 ### Performance and scaling
-We have developed 6 scripts, 3 CPU-based and 3 GPU-based, we can now use to realise a scaling test and report `T_eff` as function of numerical grid resolution `nx = [64 128, 256, 512, 1024, 2048, 4096]` and including `[..., 8192, 16384]` values on the GPU:
+We have developed 6 scripts, 3 CPU-based and 3 GPU-based, we can now use to realise a scaling test and report `T_eff` as function of number of grid points `nx = [64 128, 256, 512, 1024, 2048, 4096]` and including `[..., 8192, 16384]` values on the GPU:
 
 ![](docs/perf_cpu.png)
 
