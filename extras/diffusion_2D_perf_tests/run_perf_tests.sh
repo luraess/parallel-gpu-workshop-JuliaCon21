@@ -3,8 +3,10 @@
 # -> to make it executable: chmod +x runme.sh or chmod 755 runme.sh
 
 RESOL=(64 128 256 512 1024 2048 4096 8192 16384)
+declare -a RUN=( "diffusion_2D_damp_perf_gpu" "diffusion_2D_damp_perf_xpu2" "diffusion_2D_damp_xpu" )
 
-declare -a RUN=( "diffusion_2D_damp_perf_gpu" "diffusion_2D_damp_perf_xpu2" "diffusion_2D_damp_perf_xpu" "diffusion_2D_damp_xpu" "diffusion_2D_damp_perf_loop_fun" "diffusion_2D_damp_perf_loop" "diffusion_2D_damp_perf" )
+# RESOL=(64 128 256 512 1024 2048 4096)
+# declare -a RUN=( "diffusion_2D_damp_perf_loop_fun" "diffusion_2D_damp_perf_loop" "diffusion_2D_damp_perf" )
 
 USE_GPU=true
 DO_VIZ=false

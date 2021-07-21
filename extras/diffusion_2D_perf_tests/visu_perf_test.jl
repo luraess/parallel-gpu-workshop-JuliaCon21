@@ -6,7 +6,7 @@ save_fig = false
 fontsize = 11
 opts = (yaxis=font(fontsize, "Courier"), xaxis=font(fontsize, "Courier"),
         framestyle=:box, titlefontsize=fontsize, titlefont="Courier", ylabel="T_eff [GB/s]",
-        linewidth=:3.0, foreground_color_legend = nothing, legendfontsize=11, legend=:topright,
+        linewidth=:3.0, foreground_color_legend = nothing, legendfontsize=8, legendfont="Courier", legend=:topright,
         size=(600,400) )
 
 if plot_fig==1
@@ -28,7 +28,6 @@ if plot_fig==1
 elseif plot_fig==2
 
     perf_gpu_v100 = readdlm("output/out_diffusion_2D_damp_perf_gpu.txt")
-    perf_xpu_v100 = readdlm("output/out_diffusion_2D_damp_perf_xpu.txt")
     xpu_v100 = readdlm("output/out_diffusion_2D_damp_xpu.txt")
     perf_xpu2_v100 = readdlm("output/out_diffusion_2D_damp_perf_xpu2.txt")
 
@@ -37,10 +36,9 @@ elseif plot_fig==2
     ticklabels = [ @sprintf("%.f",x) for x in ticks ]
 
     p2 = plot(perf_gpu_v100[:,1], perf_gpu_v100[:,4]; xlims=(-50, 17000), ylims=(-10, 1150), label="GPU", xlabel="number of grid points (nx)", opts...)
-    plot!(perf_xpu2_v100[:,1], perf_xpu2_v100[:,4]; label="XPU parallel_indices 2", markershape=:circle, markersize=5, linealpha=0, opts...)
-    plot!(perf_xpu_v100[:,1], perf_xpu_v100[:,4]; label="XPU parallel_indices", opts...)
+    plot!(perf_xpu2_v100[:,1], perf_xpu2_v100[:,4]; label="XPU @parallel_indices", markershape=:circle, markersize=5, linealpha=0, opts...)
     plot!(xticks=(ticks,ticklabels),xrotation=0)
-    display(plot!(xpu_v100[:,1], xpu_v100[:,4]; label="XPU parallel", opts...))
+    display(plot!(xpu_v100[:,1], xpu_v100[:,4]; label="XPU @parallel", opts...))
     if save_fig savefig("perf_gpu.png") end
 
 elseif plot_fig==3
