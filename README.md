@@ -761,6 +761,7 @@ The approach and tools presented in this workshop are not restricted to 2D calcu
 - about the `T_eff` metric;
 - on how to run MPI GPU applications on different hardware.
 
+⤴️ [_back to workshop material_](#workshop-material)
 
 # Further reading
 \[1\] [Omlin, S., Räss, L., Kwasniewski, G., Malvoisin, B., & Podladchikov, Y. Y. (2020). Solving Nonlinear Multi-Physics on GPU Supercomputers with Julia. JuliaCon Conference, virtual.][JuliaCon20a]
