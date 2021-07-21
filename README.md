@@ -735,18 +735,31 @@ So, here we are:
 ### Advanced features
 This last section provides directions and details on more advanced features.
 
-- The approach and tools presented in this workshop are not restricted to 2D calculation. If you have interests in 3D examples, check out the [miniapps](https://github.com/omlins/ParallelStencil.jl#concise-singlemulti-xpu-miniapps) section from the [ParallelStencil.jl] README. The [miniapps](https://github.com/omlins/ParallelStencil.jl#concise-singlemulti-xpu-miniapps) section provides also additional information:
-    - about the `T_eff` metric;
-    - on how to run MPI GPU applications on different hardware.
+#### CUDA-aware MPI
+[ImplicitGlobalGrid.jl] supports CUDA-aware MPI upon exporting the ENV variable `IGG_CUDAAWARE_MPI=1`; MPI can then access device (GPU) pointers and exchange data directly between GPUs using Remote Direct Memory Access (RDMA) bypassing extra buffer copies to the CPU for enhanced performance.
 
-- [ImplicitGlobalGrid.jl] supports CUDA-aware MPI upon exporting the ENV variable `IGG_CUDAAWARE_MPI=1`; MPI can then access device (GPU) pointers and exchange data directly between GPUs using Remote Direct Memory Access (RDMA) bypassing extra buffer copies to the CPU for enhanced performance.
+#### Hiding communication
+[ParallelStencil.jl] exposes a hiding communication feature accessible through the [`@hide_communication`](https://github.com/luraess/geo-hpc-course/blob/0a722ac5f6da47779dfceadfec79b92c95e9e40e/scripts/heat_2D_multixpu.jl#L61) macro. This macro allows to define a boundary width applied to each local domain in order to split the computation such that:
+1. The boundary cells are first computed
+2. The communication (boundary exchange procedure) can start
+3. The remaining inner points are computed while boundary exchange is on-going.
 
-- [ParallelStencil.jl] exposes a hiding communication feature accessible through the [`@hide_communication`](https://github.com/luraess/geo-hpc-course/blob/0a722ac5f6da47779dfceadfec79b92c95e9e40e/scripts/heat_2D_multixpu.jl#L61) macro. This macro allows to define a boundary width applied to each local domain in order to split the computation such that:
-    1. The boundary cells are first computed
-    2. The communication (boundary exchange procedure) can start
-    3. The remaining inner points are computed while boundary exchange is on-going.
+The [`diffusion_2D_damp_perf_multixpu_prof.jl`](extras/diffusion_2D_damp_perf_multixpu_prof.jl) code implements CUDA profiling features to visualise the MPI communication overlapping with computation, adding `CUDA.@profile while err>tol && iter<itMax` to the inner loop.
 
-    Further infos can be found [here](https://github.com/omlins/ParallelStencil.jl#seamless-interoperability-with-communication-packages-and-hiding-communication).
+Running the code as:
+```sh
+mpirun -np 4 nvprof --profile-from-start off --export-profile diffusion_2D.%q{OMPI_COMM_WORLD_RANK}.prof -f julia --project -O3 --check-bounds=no diffusion_2D_damp_perf_multixpu_prof.jl
+```
+with will generate profiler files that can then be loaded and visualised Nvidia's visual profiler (`nvvp`):
+
+![](docs/profiling.png)
+
+The MPI communication (purple bars) nicely overlap the `compute_update!()` kernel execution. Further infos can be found [here](https://github.com/omlins/ParallelStencil.jl#seamless-interoperability-with-communication-packages-and-hiding-communication).
+
+#### 3D examples
+The approach and tools presented in this workshop are not restricted to 2D calculation. If you have interests in 3D examples, check out the [miniapps](https://github.com/omlins/ParallelStencil.jl#concise-singlemulti-xpu-miniapps) section from the [ParallelStencil.jl] README. The [miniapps](https://github.com/omlins/ParallelStencil.jl#concise-singlemulti-xpu-miniapps) section provides also additional information:
+- about the `T_eff` metric;
+- on how to run MPI GPU applications on different hardware.
 
 
 # Further reading
