@@ -42,7 +42,7 @@ if !@isdefined do_visu; do_visu = true end
             ResH   .= .-(inn(H) .- inn(Hold))/dt .+ 
                        (.-diff(qHx, dims=1)/dx .-diff(qHy, dims=2)/dy) # residual of the PDE
             dHdtau .= ResH                                             # rate of change
-            dtau   .= (1.0./(min(dx, dy)^2./inn(H).^npow./4.1) .+ 1.0/dt).^-1  # time step (obeys ~CFL condition)
+            dtau   .= (1.0./(min(dx, dy)^2 ./inn(H).^npow./4.1) .+ 1.0/dt).^-1  # time step (obeys ~CFL condition)
             H[2:end-1,2:end-1] .= inn(H) .+ dtau.*dHdtau              # update rule, sets the BC as H[1]=H[end]=0
             iter += 1; err = norm(ResH)/length(ResH)
         end
