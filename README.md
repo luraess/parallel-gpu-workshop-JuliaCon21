@@ -275,13 +275,13 @@ This second order pseudo-transient approach enables the iteration count to scale
 
 ![](docs/iter_scale.png)
 
-> The code used for scaling test, testing and visualisation routines can be found in [extras/diffusion_2D_perf_tests](extras/diffusion_2D_perf_tests).
+> The [`diffusion_2D_damp_perf_gpu_iters.jl`](extras/diffusion_2D_perf_tests/diffusion_2D_damp_perf_gpu_iters.jl) code used for scaling test, the testing and visualisation routines can be found in [extras/diffusion_2D_perf_tests](extras/diffusion_2D_perf_tests).
 
 So far so good, we have a fast implicit iterative solver. But why to bother with implicit, wasn't explicit good enough ? Let's compare the difference between the explicit and the damped implicit results using the [`compare_expl_impl.jl`](scripts/compare_expl_impl.jl) script, chosing the "explicit" physical time step for both the explicit and implicit code:
 
 ![](docs/diff2D_expl_impl.png)
 
-We see that the explicit approach lead to a less sharp front by ~0.2% (when normalised by the implicit soution).
+We see that the explicit approach lead to a less sharp front by ~0.2% (when normalised by the implicit solution).
 
 ⤴️ [_back to workshop material_](#workshop-material)
 
@@ -331,6 +331,7 @@ In the first step towards this goal we:
 - introduce a `H2` array to avoid race conditions
 - use non-allocating `diff` operators: `LazyArrays: Diff`
 - add accurate timing of the main loop and `T_eff` reporting
+
 This results in the [`diffusion_2D_damp_perf.jl`](scripts/diffusion_2D_damp_perf.jl) code:
 ```julia
 using LazyArrays
@@ -419,7 +420,7 @@ Time = 0.961 sec, T_eff = 8.80 GB/s (niter = 804)
 ```
 Since the performance increases and gets closer to hardware limit (memory copy values), some details start to become perfromance limiters, namely:
 - divisions instead of multiplications
-- arithmetic operation such as power `H^npow`
+- arithmetic operations such as power `H^npow`
 
 These details will become even more important on the GPU.
 
@@ -434,7 +435,7 @@ The main idea of the applied GPU parallelisation is to calculate each grid point
 
 ![](docs/cpu_gpu.png)
 
-The main change is to replace the (multi-threaded) loops by a vectorised GPU index
+The main change is to replace the (multi-threaded) loops by a vectorised GPU index:
 ```julia
 ix = (blockIdx().x-1) * blockDim().x + threadIdx().x
 iy = (blockIdx().y-1) * blockDim().y + threadIdx().y
@@ -486,7 +487,11 @@ So - that rocks 🚀
 ⤴️ [_back to workshop material_](#workshop-material)
 
 ### XPU implementation
-Let's do a rapid recap; so far we have two performant codes, one CPU-based, the other GPU-based, to solve the nonlinear and implicit diffusion equation in 2D. Wouldn't it be great to have single code that enables both ? The answer is [ParallelStencil.jl] which enables a backend independent syntax implementing parallel stencil kernels to execute on XPUs. The [`diffusion_2D_damp_perf_xpu2.jl`](scripts/diffusion_2D_damp_perf_xpu2.jl) code uses [ParallelStencil.jl] to combine [`diffusion_2D_damp_perf_gpu.jl`](scripts/diffusion_2D_damp_perf_gpu.jl) and [`diffusion_2D_damp_perf_loop_fun.jl`](scripts/diffusion_2D_damp_perf_loop_fun.jl) into a single code. Backend can be chosen by the `USE_GPU` flag. Using the `parallel_indices` permits to write code that avoids storing the fluxes to main memory:
+Let's do a rapid recap:
+
+So far we have two performant codes, one CPU-based, the other GPU-based, to solve the nonlinear and implicit diffusion equation in 2D. **Wouldn't it be great to have single code that enables both ?**
+
+**The answer is [ParallelStencil.jl]** which enables a backend independent syntax implementing parallel stencil kernels to execute on XPUs. The [`diffusion_2D_damp_perf_xpu2.jl`](scripts/diffusion_2D_damp_perf_xpu2.jl) code uses [ParallelStencil.jl] to combine [`diffusion_2D_damp_perf_gpu.jl`](scripts/diffusion_2D_damp_perf_gpu.jl) and [`diffusion_2D_damp_perf_loop_fun.jl`](scripts/diffusion_2D_damp_perf_loop_fun.jl) into a single code. Backend can be chosen by the `USE_GPU` flag. Using the `parallel_indices` permits to write code that avoids storing the fluxes to main memory:
 ```julia
 const USE_GPU = true
 using ParallelStencil
@@ -516,7 +521,7 @@ Running [`diffusion_2D_damp_perf_xpu2.jl`](scripts/diffusion_2D_damp_perf_xpu2.j
 ```julia-repl
 Time = 10.094 sec, T_eff = 770.00 GB/s (niter = 2904)
 ```
-That's excellent ! [ParallelStencil.jl] and the [CUDA.jl] backend show identical performance compared to the [`diffusion_2D_damp_perf_gpu.jl`](scripts/diffusion_2D_damp_perf_gpu.jl) pure [CUDA.jl] code. This ParallelStencil XPU code uses manually precomputed optimal grid and thread block sizes passed to the `@parallel` launch macro (type `?@parallel` for more information). Alternatively, ParallelStencil provides some "comfort features" for launching kernels, as e.g. computing automatically and dynamically optimal grid and thread block sizes, resulting in about 1% performance difference (see [`diffusion_2D_damp_perf_gpu.jl`](scripts/diffusion_2D_damp_perf_gpu.jl)). The "default" implementation using ParallelStencil would allow for using macros exposed by the `FiniteDifferences2D` module for a math-close notation in the kernels:
+That's excellent ! [ParallelStencil.jl] and the [CUDA.jl] backend show identical performance compared to the pure CUDA [`diffusion_2D_damp_perf_gpu.jl`](scripts/diffusion_2D_damp_perf_gpu.jl) code. The [`diffusion_2D_damp_perf_xpu2.jl`](scripts/diffusion_2D_damp_perf_xpu2.jl) XPU code uses manually precomputed optimal grid and thread block sizes passed to the `@parallel` launch macro (type `?@parallel` for more information). Alternatively, ParallelStencil provides some "comfort features" for launching kernels, as e.g. computing automatically and dynamically optimal grid and thread block sizes, resulting in about 1% performance difference (see [`diffusion_2D_damp_perf_gpu.jl`](scripts/diffusion_2D_damp_perf_gpu.jl)). The "default" implementation using ParallelStencil would allow for using macros exposed by the `FiniteDifferences2D` module for a math-close notation in the kernels:
 ```julia
 # [...] skipped lines
 @parallel function compute_flux!(qHx, qHy, H, _dx, _dy)
@@ -536,12 +541,14 @@ Running [`diffusion_2D_damp_xpu.jl`](scripts/diffusion_2D_damp_xpu.jl) with `nx 
 ```julia-repl
 Time = 21.420 sec, T_eff = 360.00 GB/s (niter = 2904)
 ```
-The performance is significantly less good in this case as writing fluxes to main memory could not be avoided using the more comfortable syntax. Note, however, that in many applications we do not face this issue and the perfomance of applications written using the `@parallel` macro is on pair with those written using the `@parallel_indices` macro. Future versions of ParallelStencil will enable confortable syntax using the `@parallel` macro for computing fields as these fluxes on-the-fly or for storing them on-chip. 
+The performance is significantly less good in this case as writing fluxes to main memory could not be avoided using the more comfortable syntax. Note, however, that in many applications we do not face this issue and the perfomance of applications written using the `@parallel` macro is on pair with those written using the `@parallel_indices` macro.
+
+> 💡 Future versions of ParallelStencil will enable confortable syntax using the `@parallel` macro for computing fields as these fluxes on-the-fly or for storing them on-chip. 
 
 ⤴️ [_back to workshop material_](#workshop-material)
 
 ### Performance and scaling
-We have developed 6 scripts, 3 CPU-based and 3 GPU-based, we can now use to realise a scaling test and report `T_eff` as function of number of grid points `nx = [64 128, 256, 512, 1024, 2048, 4096]` and including `[..., 8192, 16384]` values on the GPU:
+We have developed 6 scripts, 3 CPU-based and 4 GPU-based, we can now use to realise a scaling test and report `T_eff` as function of number of grid points `nx = [64 128, 256, 512, 1024, 2048, 4096]` and including `[..., 8192, 16384]` values on the GPU:
 
 ![](docs/perf_cpu.png)
 
@@ -589,7 +596,7 @@ So far, so good, we are now ready to write a script that would truly distribute 
 ⤴️ [_back to workshop material_](#workshop-material)
 
 ### Distributed Julia computing using MPI
-As next step, let's see what are the minimal steps that would allow us to write an MPI-parallel code in Julia. We will solve the following linear diffusion physics:
+As next step, let's see what are the minimal requirements that would allow us to write an MPI-parallel code in Julia. We will solve the following linear diffusion physics:
 ```julia
 for it = 1:nt
     qHx        .= .-λ*diff(H)/dx
@@ -672,7 +679,20 @@ The remaining steps are to:
 - use multiple GPUs
 - prevent MPI communication to become the performance killer
 
-We address these steps using [ImplicitGlobalGrid.jl] along with [ParallelStencil.jl]. As final act of this workshop we will take the high-performance XPU [`diffusion_2D_damp_perf_xpu.jl`](scripts/diffusion_2D_damp_perf_xpu.jl) code from [Part 2](#xpu-implementation) and add the few required [ImplicitGlobalGrid.jl] functions in order to have a multi-XPU code ready to scale on GPU supercomputers.
+We address these steps using [ImplicitGlobalGrid.jl] along with [ParallelStencil.jl]. As final act of this workshop we will take the high-performance XPU [`diffusion_2D_damp_perf_xpu.jl`](scripts/diffusion_2D_damp_perf_xpu.jl) code from [Part 2](#xpu-implementation):
+```julia
+# [...] skipped lines
+damp   = 1-35/nx      # damping (this is a tuning parameter, dependent on e.g. grid resolution)
+dx, dy = lx/nx, ly/ny # grid size
+# [...] skipped lines
+H      = Data.Array(exp.(.-(xc.-lx/2).^2 .-(yc.-ly/2)'.^2))
+# [...] skipped lines
+@parallel compute_update!(H2, dHdtau, H, Hold, _dt, damp, min_dxy2, _dx, _dy)
+# [...] skipped lines
+err = norm(ResH)/length(ResH)
+# [...] skipped lines
+```
+and add the few required [ImplicitGlobalGrid.jl] functions in order to have a multi-XPU code ready to scale on GPU supercomputers.
 
 Appreciate the few minor changes -**10 new lines only**- (not including those for visualisation) required turn the single-XPU code into a multi-XPU code [`diffusion_2D_damp_perf_multixpu.jl`](scripts/diffusion_2D_damp_perf_multixpu.jl):
 ```julia
