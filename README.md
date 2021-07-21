@@ -189,7 +189,7 @@ $ export MPICH_INTERFACE_HOSTNAME=localhost
 ```
 > and add `-host localhost` to the execution script:
 ```sh
-$ HOME/.julia/bin/mpiexecjl -n 4 -host localhost julia --project extras/hello_mpi.jl
+$ mpiexecjl -n 4 -host localhost julia --project extras/hello_mpi.jl
 ```
 
 <br>
@@ -652,7 +652,7 @@ where `x0` represents the first global x-coordinate on every process and `xc` re
 
 Running the [`diffusion_1D_mpi.jl`](scripts/diffusion_1D_mpi.jl) code
 ```sh
-HOME/.julia/bin/mpiexecjl -n 4 julia --project diffusion_1D_mpi.jl
+mpiexecjl -n 4 julia --project diffusion_1D_mpi.jl
 ```
 will generate one output file for each MPI process. Use the [`vizme1D_mpi.jl`](scripts/vizme1D_mpi.jl) script to reconstruct the global `H` array from the local results and visualise it.
 
