@@ -754,6 +754,8 @@ with will generate profiler files that can then be loaded and visualised Nvidia'
 
 ![](docs/profiling.png)
 
+> Note that CUDA-aware MPI was used on 4 Nvidia Tesla V100 GPUs, connected with NVLink (i.e. MPI communication is using NVLink here)
+
 The MPI communication (purple bars) nicely overlap the `compute_update!()` kernel execution. Further infos can be found [here](https://github.com/omlins/ParallelStencil.jl#seamless-interoperability-with-communication-packages-and-hiding-communication).
 
 #### 3D examples
