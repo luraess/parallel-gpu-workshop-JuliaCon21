@@ -59,7 +59,7 @@ The workshop repository lists following folders and items:
 > 👉 This repository is an interactive and dynamic source of information related to the workshop.
 >- Check out the [**Discussion**](https://github.com/luraess/parallel-gpu-workshop-JuliaCon21/discussions) tab if you have general comments, ideas to share or for Q&A.
 >- File an [**Issue**](https://github.com/luraess/parallel-gpu-workshop-JuliaCon21/issues) if you encounter any technical problems with the distributed codes.
->- Interact in a open-minded, respectful and inclusive manner.
+>- Interact in an open-minded, respectful and inclusive manner.
 
 ⤴️ [_back to content_](#content)
 
@@ -195,7 +195,7 @@ $ mpiexecjl -n 4 -host localhost julia --project extras/hello_mpi.jl
 <br>
 </details>
 
-> 👉 **Note: This workshop was developed and tested on Julia v1.6. It should work with any Julia version ≥v1.6**. The install configuration were tested on a MacBook Pro running macOS 10.15.7, a Linux GPU server running Ubuntu 20.04 LTS and a Linux GPU server running CentOS 8.
+> 👉 **Note: This workshop was developed and tested on Julia v1.6. It should work with any Julia version ≥v1.6**. The install configurations were tested on a MacBook Pro running macOS 10.15.7, a Linux GPU server running Ubuntu 20.04 LTS and a Linux GPU server running CentOS 8.
 
 
 # Workshop material
@@ -277,11 +277,11 @@ This second order pseudo-transient approach enables the iteration count to scale
 
 > The [`diffusion_2D_damp_perf_gpu_iters.jl`](extras/diffusion_2D_perf_tests/diffusion_2D_damp_perf_gpu_iters.jl) code used for scaling test, the testing and visualisation routines can be found in [extras/diffusion_2D_perf_tests](extras/diffusion_2D_perf_tests).
 
-So far so good, we have a fast implicit iterative solver. But why to bother with implicit, wasn't explicit good enough ? Let's compare the difference between the explicit and the damped implicit results using the [`compare_expl_impl.jl`](scripts/compare_expl_impl.jl) script, chosing the "explicit" physical time step for both the explicit and implicit code:
+So far so good, we have a fast implicit iterative solver. But why bother with implicit, wasn't explicit good enough ? Let's compare the difference between the explicit and the damped implicit results using the [`compare_expl_impl.jl`](scripts/compare_expl_impl.jl) script, chosing the "explicit" physical time step for both the explicit and implicit code:
 
 ![](docs/diff2D_expl_impl.png)
 
-We see that the explicit approach lead to a less sharp front by ~0.2% (when normalised by the implicit solution).
+We see that the explicit approach leads to a less sharp front by ~0.2% (when normalised by the implicit solution).
 
 ⤴️ [_back to workshop material_](#workshop-material)
 
@@ -418,7 +418,7 @@ Running [`diffusion_2D_damp_perf_loop_fun.jl`](scripts/diffusion_2D_damp_perf_lo
 ```julia-repl
 Time = 0.961 sec, T_eff = 8.80 GB/s (niter = 804)
 ```
-Since the performance increases and gets closer to hardware limit (memory copy values), some details start to become perfromance limiters, namely:
+Since the performance increases and gets closer to hardware limit (memory copy values), some details start to become performance limiters, namely:
 - divisions instead of multiplications
 - arithmetic operations such as power `H^npow`
 
@@ -429,7 +429,7 @@ We are now ready to move to the GPU !
 ⤴️ [_back to workshop material_](#workshop-material)
 
 ### GPU implementation
-So we now have a cool iterative and implicit nonlinear diffusion solver in less than 100 lines of code 🎉. Good enough for mid-resolution calculations. What if we need higher resolution and faster time to solution ? GPU computing makes it possible to go way beyond the so far achieved T_eff of 8.8 GB/s with my consumer eletronics notebook CPU. Let's slightly modify the [`diffusion_2D_damp_perf_loop_fun.jl`](scripts/diffusion_2D_damp_perf_loop_fun.jl) code to enable GPU execution.
+So we now have a cool iterative and implicit nonlinear diffusion solver in less than 100 lines of code 🎉. Good enough for mid-resolution calculations. What if we need higher resolution and faster time to solution ? GPU computing makes it possible to go way beyond the so far achieved T_eff of 8.8 GB/s with my consumer electronics CPU. Let's slightly modify the [`diffusion_2D_damp_perf_loop_fun.jl`](scripts/diffusion_2D_damp_perf_loop_fun.jl) code to enable GPU execution.
 
 The main idea of the applied GPU parallelisation is to calculate each grid point concurrently by a different GPU thread (instead of the more serial CPU execution) as depicted hereafter:
 
@@ -474,7 +474,7 @@ cublocks  = (GRIDX,  GRIDY,  1)
 synchronize()
 # [...] skipped lines
 ```
-> 💡 We use `@cuda blocks=cublocks threads=cuthreads` to launch the GPU kernel on the appropriate number of threads, i.e. "parallel workers". The number of grid points `nx` and `ny` must now be chosen accordingly to the number of parallel workers. Also, note that we need to run higher resolution in order to saturate the GPU memory bandwidth and get relevant performance measure.
+> 💡 We use `@cuda blocks=cublocks threads=cuthreads` to launch the GPU kernel on the appropriate number of threads, i.e. "parallel workers". The number of grid points `nx` and `ny` must now be chosen according to the number of parallel workers. Also, note that we need to run higher resolution in order to saturate the GPU memory bandwidth and get relevant performance measures.
 
 > ⚠ Default precision in `CUDA.jl` is `Float32`, so we have to enforce `Float64` here.
 
@@ -489,7 +489,7 @@ So - that rocks 🚀
 ### XPU implementation
 Let's do a rapid recap:
 
-So far we have two performant codes, one CPU-based, the other GPU-based, to solve the nonlinear and implicit diffusion equation in 2D. **Wouldn't it be great to have single code that enables both ?**
+So far we have two performant codes, one CPU-based, the other GPU-based, to solve the nonlinear and implicit diffusion equation in 2D. **Wouldn't it be great to have a single code that enables both ?**
 
 **The answer is [ParallelStencil.jl]** which enables a backend independent syntax implementing parallel stencil kernels to execute on XPUs. The [`diffusion_2D_damp_perf_xpu2.jl`](scripts/diffusion_2D_damp_perf_xpu2.jl) code uses [ParallelStencil.jl] to combine [`diffusion_2D_damp_perf_gpu.jl`](scripts/diffusion_2D_damp_perf_gpu.jl) and [`diffusion_2D_damp_perf_loop_fun.jl`](scripts/diffusion_2D_damp_perf_loop_fun.jl) into a single code. Backend can be chosen by the `USE_GPU` flag. Using the `parallel_indices` permits to write code that avoids storing the fluxes to main memory:
 ```julia
@@ -541,9 +541,9 @@ Running [`diffusion_2D_damp_xpu.jl`](scripts/diffusion_2D_damp_xpu.jl) with `nx 
 ```julia-repl
 Time = 21.420 sec, T_eff = 360.00 GB/s (niter = 2904)
 ```
-The performance is significantly less good in this case as writing fluxes to main memory could not be avoided using the more comfortable syntax. Note, however, that in many applications we do not face this issue and the perfomance of applications written using the `@parallel` macro is on pair with those written using the `@parallel_indices` macro.
+The performance is significantly less good in this case as writing fluxes to main memory could not be avoided using the more comfortable syntax. Note, however, that in many applications we do not face this issue and the performance of applications written using the `@parallel` macro is on par with those written using the `@parallel_indices` macro.
 
-> 💡 Future versions of ParallelStencil will enable confortable syntax using the `@parallel` macro for computing fields as these fluxes on-the-fly or for storing them on-chip. 
+> 💡 Future versions of ParallelStencil will enable comfortable syntax using the `@parallel` macro for computing fields as these fluxes on-the-fly or for storing them on-chip. 
 
 ⤴️ [_back to workshop material_](#workshop-material)
 
@@ -665,7 +665,7 @@ will generate one output file for each MPI process. Use the [`vizme1D_mpi.jl`](s
 
 Yay 🎉 - we just made a Julia parallel MPI diffusion solver in _only_ 70 lines of code.
 
-Hold-on, the [`diffusion_2D_mpi.jl`](scripts/diffusion_2D_mpi.jl) code implements a 2D version of the [`diffusion_1D_mpi.jl`](scripts/diffusion_1D_mpi.jl) code. Nothing is really new in there, but it may be interesting to see how boundary update routines are defined in 2D as one now needs to exchange vectors instead of single values. Running the [`diffusion_2D_mpi.jl`](scripts/diffusion_2D_mpi.jl) will generate one output file per MPI process and the [`vizme2D_mpi.jl`](scripts/vizme2D_mpi.jl) script can then be used for visualisation purpose.
+Hold-on, the [`diffusion_2D_mpi.jl`](scripts/diffusion_2D_mpi.jl) code implements a 2D version of the [`diffusion_1D_mpi.jl`](scripts/diffusion_1D_mpi.jl) code. Nothing is really new there, but it may be interesting to see how boundary update routines are defined in 2D as one now needs to exchange vectors instead of single values. Running the [`diffusion_2D_mpi.jl`](scripts/diffusion_2D_mpi.jl) will generate one output file per MPI process and the [`vizme2D_mpi.jl`](scripts/vizme2D_mpi.jl) script can then be used for visualisation purpose.
 
 _Note: The presented concise Julia MPI scripts are inspired from [this 2D python script](https://github.com/omlins/adios2-tutorial/blob/main/example/mpi_diffusion2D.py)._
 
@@ -739,7 +739,7 @@ This last section provides directions and details on more advanced features.
 [ImplicitGlobalGrid.jl] supports CUDA-aware MPI upon exporting the ENV variable `IGG_CUDAAWARE_MPI=1`; MPI can then access device (GPU) pointers and exchange data directly between GPUs using Remote Direct Memory Access (RDMA) bypassing extra buffer copies to the CPU for enhanced performance.
 
 #### Hiding communication
-[ParallelStencil.jl] exposes a hiding communication feature accessible through the [`@hide_communication`](https://github.com/luraess/geo-hpc-course/blob/0a722ac5f6da47779dfceadfec79b92c95e9e40e/scripts/heat_2D_multixpu.jl#L61) macro. This macro allows to define a boundary width applied to each local domain in order to split the computation such that:
+[ParallelStencil.jl] exposes a hiding communication feature accessible through the [`@hide_communication`](https://github.com/luraess/parallel-gpu-workshop-JuliaCon21/blob/cb0ca90d5f8fc46d4cf57edc2b26ff6b7cddd353/scripts/diffusion_2D_damp_perf_multixpu.jl#L90) macro. This macro allows to define a boundary width applied to each local domain in order to split the computation such that:
 1. The boundary cells are first computed
 2. The communication (boundary exchange procedure) can start
 3. The remaining inner points are computed while boundary exchange is on-going.
