@@ -38,7 +38,7 @@ We will use these two Julia packages to design and implement an iterative nonlin
 
 **The workshop consists of 3 parts:**
 1. [**Part 1**](#part-1---fast-iterative-solvers) - You will learn about accelerating iterative solvers.
-2. [**Part 2**](#part-2---parallel-and-gpu-computing) - You will port the iterative solver to parallel CPU and GPU execution.
+2. [**Part 2**](#part-2---parallel-cpu-and-gpu-computing) - You will port the iterative solver to parallel CPU and GPU execution.
 3. [**Part 3**](#part-3---distributed-computing-on-multiple-cpus-and-gpus) - You will learn how to implement multi-CPU and multi-GPU execution.
 
 By the end of this workshop, you will:
@@ -204,7 +204,7 @@ This section lists the material discussed within this 3h workshop:
     * [Diffusion equation](#diffusion-equation)
     * [Iterative solvers](#iterative-solvers)
     * [Performance considerations](#performance-considerations)
-* [Part 2 - Parallel CPU and GPU computing](#part-2---parallel-and-gpu-computing)
+* [Part 2 - Parallel CPU and GPU computing](#part-2---parallel-cpu-and-gpu-computing)
     * [Parallel CPU implementation](#parallel-cpu-implementation)
     * [GPU implementation](#gpu-implementation)
     * [XPU implementation](#xpu-implementation)
