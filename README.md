@@ -4,7 +4,7 @@
 
 [**JuliaCon 2021 workshop | Fri, July 23, 10am-1pm ET (16:00-19:00 CEST)**](https://pretalx.com/juliacon2021/talk/review/NDHRHLYN7JZUV88PLFWPL99P93NQVU8K)
 
-[**👀 Workshop LIVE STREAM**](https://www.youtube.com/watch?v=DvlM0w6lYEY)
+[**👀 Workshop LIVE recording**](https://www.youtube.com/watch?v=DvlM0w6lYEY)
 
 👉 **Organisation notes:**
 - 💡 The workshop material (available on this repository) **was just updated - fetch the latest versions!**
