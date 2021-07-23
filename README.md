@@ -30,7 +30,7 @@ This workshop covers trendy areas in modern numerical computing with examples fr
 # Objectives
 The goal of this workshop is to offer an interactive hands-on to solve systems of differential equations in parallel on GPUs using the [ParallelStencil.jl] and [ImplicitGlobalGrid.jl] Julia packages. [ParallelStencil.jl] permits to write architecture-agnostic parallel high-performance GPU and CPU code for stencil computations and [ImplicitGlobalGrid.jl] renders its distributed parallelization almost trivial. The resulting codes are fast, short and readable \[[1][JuliaCon20a], [2][JuliaCon20b], [3][JuliaCon19]\].
 
-We will use these two Julia packages to design and implement an iterative nonlinear diffusion solver. We will, in a second step, turn the serial CPU solver into a parallel application to run on multiple CPU threads and on GPUs. We will, in a third step, do distributed memory computing, enhancing the nonlinear diffusion solver to execute on multiple CPUs and GPUs. The nonlinear diffusion solver we will work on can be applied to resolve the shallow ice approximation (SIA) equations with applications that predict ice flow dynamics over mountainous Greenland topography (Fig. below). 
+We will use these two Julia packages to design and implement an iterative nonlinear diffusion solver. We will, in a second step, turn the serial CPU solver into a parallel application to run on multiple CPU threads and on GPUs. We will, in a third step, do distributed memory computing, enhancing the nonlinear diffusion solver to execute on multiple CPUs and GPUs. The nonlinear diffusion solver we will work on can be applied to resolve the shallow ice approximation (SIA) equations with applications that predict ice flow dynamics over mountainous Greenland topography (Fig. below).
 
 ![Greenland ice cap](docs/greenland_1.png)
 
@@ -158,7 +158,7 @@ export JULIA_CUDA_USE_BINARYBUILDER=false
 
 ## Julia MPI
 The following steps permit you to install [MPI.jl] on your machine and test it:
-1. Julia MPI being a dependency of this Julia project [MPI.jl] should have been added upon executing the `instantiate` command from within the package manager [see here](#packages-installation). 
+1. Julia MPI being a dependency of this Julia project [MPI.jl] should have been added upon executing the `instantiate` command from within the package manager [see here](#packages-installation).
 
 2. Install `mpiexecjl`:
 ```julia-repl
@@ -257,16 +257,25 @@ So now you may ask: can we use an implicit algorithm to ensure nonlinear accurac
 ### Iterative solvers
 The [`diffusion_2D_impl.jl`](scripts/diffusion_2D_impl.jl) code implements an iterative, implicit solution of eq. (1). **How ?** We include the physical time derivative `dH/dt=(H-Hold)/dt` in the previous rate of change `dHdt` to define the residual `ResH`
 ```md
-ResH = -(H-Hold)/dt -dqHx/dx -dqHy/dy
+ResH = -(H-Hold)/dt -dqHx/dx -dqHy/dy = 0
 ```
-and iterate until the values of `ResH` (the residual of the eq. (1)) drop below a defined tolerance level `tol`.
+This is the backward Euler time-stepping scheme.  We iterate until the values of `ResH` (the residual of the eq. (1)) drop below a defined tolerance level `tol`.
+
+How do we iterate?  Let's define a "new" time, a pseudo-time `tau` and set
+```md
+dH/dtau = ResH
+```
+If we evolve `H` forward in pseudo-time until it reaches a steady state, we get a `H` which solves the equation `ResH=0`.  This is know as a *Picard* or fixed-point iteration.
+
+Running the implementation [`diffusion_2D_impl.jl`](scripts/diffusion_2D_impl.jl) gives:
 
 ![](docs/diff2D_impl.png)
 
-It works, but the "naive" _Picard_ iteration count seems to be pretty high (`niter>800`). A efficient way to circumvent this is to add "damping" (`damp`) to the rate-of-change `dHdt`, analogous to add friction enabling faster convergence \[[4][Frankel50]\]
+It works, but the "naive" _Picard_ iteration count seems to be pretty high (`niter>800`). A efficient way to circumvent this is to add "damping" (`damp`) to the (pseudo-time) rate-of-change `dH/dtau`, analogous to add friction enabling faster convergence \[[4][Frankel50]\]
 ```md
-dHdt = ResH + damp*dHdt
+dH/dtau = ResH + damp * (dH/dtau)_prev
 ```
+where `(dH/dtau)_prev` is the `dH/dtau` value from the previous pseudo-time iteration.
 The [`diffusion_2D_damp.jl`](scripts/diffusion_2D_damp.jl) code implements a damped iterative implicit solution of eq. (1). The iteration count drops to `niter<200`.
 
 ![](docs/diff2D_damp.png)
@@ -277,11 +286,11 @@ This second order pseudo-transient approach enables the iteration count to scale
 
 > The [`diffusion_2D_damp_perf_gpu_iters.jl`](extras/diffusion_2D_perf_tests/diffusion_2D_damp_perf_gpu_iters.jl) code used for scaling test, the testing and visualisation routines can be found in [extras/diffusion_2D_perf_tests](extras/diffusion_2D_perf_tests).
 
-So far so good, we have a fast implicit iterative solver. But why bother with implicit, wasn't explicit good enough ? Let's compare the difference between the explicit and the damped implicit results using the [`compare_expl_impl.jl`](scripts/compare_expl_impl.jl) script, chosing the "explicit" physical time step for both the explicit and implicit code:
+So far so good, we have a fast implicit iterative solver. But why bother with implicit, wasn't explicit good enough? Let's compare the difference between the explicit and the damped implicit results using the [`compare_expl_impl.jl`](scripts/compare_expl_impl.jl) script, chosing the "explicit" physical time step for both the explicit and implicit code:
 
 ![](docs/diff2D_expl_impl.png)
 
-We see that the explicit approach leads to a less sharp front by ~0.2% (when normalised by the implicit solution).
+We see that the explicit approach leads to a less sharp front by ~0.2% (when normalised by the implicit solution).  (Although, arguably this 2D non-linear diffusion problem is solved similarly well by either method.  But stiffer problems *need* an implicit time stepper.)
 
 ⤴️ [_back to workshop material_](#workshop-material)
 
@@ -294,7 +303,7 @@ We just achieved (1.) with the implicit damped approach. Let's fix (2.).
 
 Many-core processors as GPUs are throughput-oriented systems that use their massive parallelism to hide latency. On the scientific application side, most algorithms require only a few operations or flops compared to the amount of numbers or bytes accessed from main memory, and thus are significantly memory bound; the Flop/s metric is no longer the most adequate for reporting performance. This status motivated the development of a memory throughput-based performance evaluation metric, `T_eff`, to evaluate the performance of iterative stencil-based solvers \[[1][JuliaCon20a]\].
 
-The effective memory access, `A_eff` [GB], is the the sum of twice the memory footprint of the unknown fields, `D_u`, (fields that depend on their own history and that need to be updated every iteration) and the known fields, `D_k`, (fields that do not change every iteration). The effective memory access divided by the execution time per iteration, `t_it` [sec], defines the effective memory throughput, `T_eff` [GB/s].
+The effective memory access, `A_eff` [GB], is the the sum of twice the memory footprint of the unknown fields, `D_u`, (fields that depend on their own history and that need to be updated every iteration, i.e. one read & one write) and once the known fields, `D_k`, (fields that do not change every iteration, i.e. just one read). The effective memory access divided by the execution time per iteration, `t_it` [sec], defines the effective memory throughput, `T_eff` [GB/s].
 
 ```md
 A_eff = 2 D_u + D_k
@@ -314,12 +323,12 @@ Let's implement this measure in the following scripts.
 ⤴️ [_back to workshop material_](#workshop-material)
 
 ## Part 2 - Parallel CPU and GPU computing
-In this second part of the workshop, we will port the [`diffusion_2D_damp.jl`](scripts/diffusion_2D_damp.jl) script implemented using Julia CPU array broadcasting to high-performance parallel CPU and GPU implementations. 
+In this second part of the workshop, we will port the [`diffusion_2D_damp.jl`](scripts/diffusion_2D_damp.jl) script implemented using Julia CPU array broadcasting to high-performance parallel CPU and GPU implementations.
 ```julia
 # [...] skipped lines
 qHx    .= .-av_xi(H).^npow.*diff(H[:,2:end-1], dims=1)/dx  # flux
 qHy    .= .-av_yi(H).^npow.*diff(H[2:end-1,:], dims=2)/dy  # flux
-ResH   .= .-(inn(H) .- inn(Hold))/dt .+ 
+ResH   .= .-(inn(H) .- inn(Hold))/dt .+
            (.-diff(qHx, dims=1)/dx .-diff(qHy, dims=2)/dy) # residual of the PDE
 dHdtau .= ResH .+ damp*dHdtau                              # damped rate of change
 dtau   .= (1.0./(min(dx, dy)^2. /inn(H).^npow./4.1) .+ 1.0/dt).^-1  # time step (obeys ~CFL condition)
@@ -327,8 +336,8 @@ H[2:end-1,2:end-1] .= inn(H) .+ dtau.*dHdtau               # update rule, sets t
 # [...] skipped lines
 ```
 In the first step towards this goal we:
-- replace the non-necessary array allocation by macros
-- introduce a `H2` array to avoid race conditions
+- use single-line broadcasting statements to avoid having to use work-arrays (to make it prettier & shorter we use macros)
+- introduce a `H2` array to avoid race conditions (once parallelized)
 - use non-allocating `diff` operators: `LazyArrays: Diff`
 - add accurate timing of the main loop and `T_eff` reporting
 
@@ -342,7 +351,7 @@ macro qHy()  esc(:( .-av_yi(H).^npow.*Diff(H[2:end-1,:], dims=2)/dy )) end
 macro dtau() esc(:( (1.0./(min(dx, dy)^2 ./inn(H).^npow./4.1) .+ 1.0/dt).^-1  )) end
 # [...] skipped lines
 if (it==1 && iter==0) t_tic = Base.time(); niter = 0 end
-dHdtau .= .-(inn(H) .- inn(Hold))/dt .+ 
+dHdtau .= .-(inn(H) .- inn(Hold))/dt .+
            (.-Diff(@qHx(), dims=1)/dx .-Diff(@qHy(), dims=2)/dy) .+
            damp*dHdtau                              # damped rate of change
 H2[2:end-1,2:end-1] .= inn(H) .+ @dtau().*dHdtau    # update rule, sets the BC as H[1]=H[end]=0
@@ -371,7 +380,7 @@ macro dtau(ix,iy) esc(:(  (1.0/(min(dx,dy)^2 / H[$ix+1,$iy+1]^npow/4.1) + 1.0/dt
 # [...] skipped lines
 for iy=1:size(dHdtau,2)
     for ix=1:size(dHdtau,1)
-        dHdtau[ix,iy] = -(H[ix+1, iy+1] - Hold[ix+1, iy+1])/dt + 
+        dHdtau[ix,iy] = -(H[ix+1, iy+1] - Hold[ix+1, iy+1])/dt +
                          (-(@qHx(ix+1,iy)-@qHx(ix,iy))/dx -(@qHy(ix,iy+1)-@qHy(ix,iy))/dy) +
                          damp*dHdtau[ix,iy]                        # damped rate of change
         H2[ix+1,iy+1] = H[ix+1,iy+1] + @dtau(ix,iy)*dHdtau[ix,iy]  # update rule, sets the BC as H[1]=H[end]=0
@@ -386,6 +395,7 @@ Running [`diffusion_2D_damp_perf_loop.jl`](scripts/diffusion_2D_damp_perf_loop.j
 ```julia-repl
 Time = 4.774 sec, T_eff = 1.80 GB/s (niter = 804)
 ```
+(We're not sure why the performance so drastically improved over [`diffusion_2D_damp_perf.jl`](scripts/diffusion_2D_damp_perf.jl), as broadcasting was just replaced by loops.)
 
 The next step is to wrap these physics calculations into functions (later called kernels on the GPU) and define them before the main function of the script, resulting in the [`diffusion_2D_damp_perf_loop_fun.jl`](scripts/diffusion_2D_damp_perf_loop_fun.jl) code:
 ```julia
@@ -398,7 +408,7 @@ function compute_update!(H2, dHdtau, H, Hold, _dt, damp, min_dxy2, _dx, _dy)
     Threads.@threads for iy=1:size(dHdtau,2)
     # for iy=1:size(dHdtau,2)
         for ix=1:size(dHdtau,1)
-            dHdtau[ix,iy] = -(H[ix+1, iy+1] - Hold[ix+1, iy+1])*_dt + 
+            dHdtau[ix,iy] = -(H[ix+1, iy+1] - Hold[ix+1, iy+1])*_dt +
                              (-(@qHx(ix+1,iy)-@qHx(ix,iy))*_dx -(@qHy(ix,iy+1)-@qHy(ix,iy))*_dy) +
                              damp*dHdtau[ix,iy]                        # damped rate of change
             H2[ix+1,iy+1] = H[ix+1,iy+1] + @dtau(ix,iy)*dHdtau[ix,iy]  # update rule, sets the BC as H[1]=H[end]=0
@@ -418,6 +428,9 @@ Running [`diffusion_2D_damp_perf_loop_fun.jl`](scripts/diffusion_2D_damp_perf_lo
 ```julia-repl
 Time = 0.961 sec, T_eff = 8.80 GB/s (niter = 804)
 ```
+(Here again: some performance improvement stems from using multi-threading but there are additional gains compared to  [`diffusion_2D_damp_perf_loop.jl`](scripts/diffusion_2D_damp_perf_loop.jl) of unknown origin...)
+
+
 Since the performance increases and gets closer to hardware limit (memory copy values), some details start to become performance limiters, namely:
 - divisions instead of multiplications
 - arithmetic operations such as power `H^npow`
@@ -448,7 +461,7 @@ function compute_update!(H2, dHdtau, H, Hold, _dt, damp, min_dxy2, _dx, _dy)
     ix = (blockIdx().x-1) * blockDim().x + threadIdx().x
     iy = (blockIdx().y-1) * blockDim().y + threadIdx().y
     if (ix<=size(dHdtau,1) && iy<=size(dHdtau,2))
-        dHdtau[ix,iy] = -(H[ix+1, iy+1] - Hold[ix+1, iy+1])*_dt + 
+        dHdtau[ix,iy] = -(H[ix+1, iy+1] - Hold[ix+1, iy+1])*_dt +
                          (-(@qHx(ix+1,iy)-@qHx(ix,iy))*_dx -(@qHy(ix,iy+1)-@qHy(ix,iy))*_dy) +
                          damp*dHdtau[ix,iy]                        # damped rate of change
         H2[ix+1,iy+1] = H[ix+1,iy+1] + @dtau(ix,iy)*dHdtau[ix,iy]  # update rule, sets the BC as H[1]=H[end]=0
@@ -504,7 +517,7 @@ end
 # [...] skipped lines
 @parallel_indices (ix,iy) function compute_update!(H2, dHdtau, H, Hold, _dt, damp, min_dxy2, _dx, _dy)
     if (ix<=size(dHdtau,1) && iy<=size(dHdtau,2))
-        dHdtau[ix,iy] = -(H[ix+1, iy+1] - Hold[ix+1, iy+1])*_dt + 
+        dHdtau[ix,iy] = -(H[ix+1, iy+1] - Hold[ix+1, iy+1])*_dt +
                          (-(@qHx(ix+1,iy)-@qHx(ix,iy))*_dx -(@qHy(ix,iy+1)-@qHy(ix,iy))*_dy) +
                          damp*dHdtau[ix,iy]                        # damped rate of change
         H2[ix+1,iy+1] = H[ix+1,iy+1] + @dtau(ix,iy)*dHdtau[ix,iy]  # update rule, sets the BC implicitly as H[1]=H[end]=0
@@ -543,7 +556,7 @@ Time = 21.420 sec, T_eff = 360.00 GB/s (niter = 2904)
 ```
 The performance is significantly less good in this case as writing fluxes to main memory could not be avoided using the more comfortable syntax. Note, however, that in many applications we do not face this issue and the performance of applications written using the `@parallel` macro is on par with those written using the `@parallel_indices` macro.
 
-> 💡 Future versions of ParallelStencil will enable comfortable syntax using the `@parallel` macro for computing fields as these fluxes on-the-fly or for storing them on-chip. 
+> 💡 Future versions of ParallelStencil will enable comfortable syntax using the `@parallel` macro for computing fields as these fluxes on-the-fly or for storing them on-chip.
 
 ⤴️ [_back to workshop material_](#workshop-material)
 
@@ -672,7 +685,7 @@ _Note: The presented concise Julia MPI scripts are inspired from [this 2D python
 ⤴️ [_back to workshop material_](#workshop-material)
 
 ### Multi-XPU implementations in 2D
-Let's do a quick recap: so far, we explored the concept of distributed memory parallelisation with simple "fake-parallel" codes. We then demystified the usage of MPI in Julia within a 1D and 2D diffusion solver using [MPI.jl], a Cartesian topology and blocking message. This code would already execute on many processors and could be launched on a cluster. 
+Let's do a quick recap: so far, we explored the concept of distributed memory parallelisation with simple "fake-parallel" codes. We then demystified the usage of MPI in Julia within a 1D and 2D diffusion solver using [MPI.jl], a Cartesian topology and blocking message. This code would already execute on many processors and could be launched on a cluster.
 
 The remaining steps are to:
 - use non-blocking communication

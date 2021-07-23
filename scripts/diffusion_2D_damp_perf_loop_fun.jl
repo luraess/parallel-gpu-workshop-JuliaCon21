@@ -13,7 +13,7 @@ function compute_update!(H2, dHdtau, H, Hold, _dt, damp, min_dxy2, _dx, _dy)
     Threads.@threads for iy=1:size(dHdtau,2)
     # for iy=1:size(dHdtau,2)
         for ix=1:size(dHdtau,1)
-            dHdtau[ix,iy] = -(H[ix+1, iy+1] - Hold[ix+1, iy+1])*_dt + 
+            dHdtau[ix,iy] = -(H[ix+1, iy+1] - Hold[ix+1, iy+1])*_dt +
                              (-(@qHx(ix+1,iy)-@qHx(ix,iy))*_dx -(@qHy(ix,iy+1)-@qHy(ix,iy))*_dy) +
                              damp*dHdtau[ix,iy]                        # damped rate of change
             H2[ix+1,iy+1] = H[ix+1,iy+1] + @dtau(ix,iy)*dHdtau[ix,iy]  # update rule, sets the BC as H[1]=H[end]=0
@@ -26,7 +26,7 @@ function compute_residual!(ResH, H, Hold, _dt, _dx, _dy)
     Threads.@threads for iy=1:size(ResH,2)
     # for iy=1:size(ResH,2)
         for ix=1:size(ResH,1)
-            ResH[ix,iy] = -(H[ix+1, iy+1] - Hold[ix+1, iy+1])*_dt + 
+            ResH[ix,iy] = -(H[ix+1, iy+1] - Hold[ix+1, iy+1])*_dt +
                            (-(@qHx(ix+1,iy)-@qHx(ix,iy))*_dx -(@qHy(ix,iy+1)-@qHy(ix,iy))*_dy)
         end
     end
