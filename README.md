@@ -65,6 +65,15 @@ The workshop repository lists following folders and items:
 
 
 # Getting started
+**TL;DR** (assuming you have Julia v1.6 installed).  Run at shell:
+```
+git clone https://github.com/luraess/parallel-gpu-workshop-JuliaCon21.git
+cd parallel-gpu-workshop-JuliaCon21/scripts
+julia --project -t4
+
+julia> using Pkg; Pkg.instantiate()
+```
+
 > ⚠️ The workshop will not cover the Getting started steps. These are meant to provide directions to the participant willing to actively try out the examples during the workshop or for Julia newcomers. **It is warmly recommended to perform the Getting started steps before the beginning of the workshop.**
 
 The detailed steps in the dropdown hereafter will get you started with:
