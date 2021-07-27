@@ -4,11 +4,10 @@
 
 [**JuliaCon 2021 workshop | Fri, July 23, 10am-1pm ET (16:00-19:00 CEST)**](https://pretalx.com/juliacon2021/talk/review/NDHRHLYN7JZUV88PLFWPL99P93NQVU8K)
 
-[**👀 Workshop LIVE recording**](https://www.youtube.com/watch?v=DvlM0w6lYEY)
+[**👀 watch the workshop LIVE recording**](https://www.youtube.com/watch?v=DvlM0w6lYEY)
 
-👉 **Organisation notes:**
-- 💡 The workshop material (available on this repository) **was just updated - fetch the latest versions!**
-- 👉 **Make sure to go through [Getting started](#getting-started) before the start of the workshop.**
+👉 **Useful notes:**
+- 💡 The [Getting started](#getting-started) will help you set up.
 - ❓ Further interests in solving PDEs with Julia on GPUs
     - Check out this [online geo-HPC tutorial](https://github.com/luraess/geo-hpc-course)
     - Visit [EGU21's short course repo](https://github.com/luraess/julia-parallel-course-EGU21)
@@ -22,7 +21,7 @@ This workshop covers trendy areas in modern numerical computing with examples fr
 * [Objectives](#objectives)
 * [About this repository](#about-this-repository)
 * [Getting started](#getting-started) _(not discussed during the workshop)_
-* 👉 [Workshop material](#workshop-material)
+* 👉 [**Workshop material**](#workshop-material)
 * [Extras](#extras) _(optional if time permits)_
 * [Further reading](#further-reading)
 
