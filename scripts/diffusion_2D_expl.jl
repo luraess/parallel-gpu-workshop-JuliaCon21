@@ -5,9 +5,9 @@ using Plots, Printf, LinearAlgebra
 if !@isdefined do_visu; do_visu = true end
 
 # finite-difference support functions
-@views av_xi(A) = 0.5*(A[1:end-1,2:end-1].+A[2:end,2:end-1])
-@views av_yi(A) = 0.5*(A[2:end-1,1:end-1].+A[2:end-1,2:end])
-@views   inn(A) = A[2:end-1,2:end-1]
+@views av_xi(A) = 0.5*(A[1:end-1,2:end-1].+A[2:end,2:end-1]) # average in x-direction
+@views av_yi(A) = 0.5*(A[2:end-1,1:end-1].+A[2:end-1,2:end]) # average in y-direction
+@views   inn(A) = A[2:end-1,2:end-1] # computational domain
 
 @views function diffusion_2D_expl(; do_visu=true, save_fig=false)
     # Physics
