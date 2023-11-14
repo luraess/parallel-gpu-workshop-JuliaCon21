@@ -76,7 +76,7 @@ julia> using Pkg; Pkg.instantiate()
 > ⚠️ The workshop will not cover the Getting started steps. These are meant to provide directions to the participant willing to actively try out the examples during the workshop or for Julia newcomers. **It is warmly recommended to perform the Getting started steps before the beginning of the workshop.**
 
 The detailed steps in the dropdown hereafter will get you started with:
-1. Installing Julia v1.6
+1. Installing Julia v1.6;
 2. Running the scripts from the workshop repository.
 
 <details>
